@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
 $Image = 'hmip-hcu-homeconnect'
-$Tag = '0.5.0'
+$Tag = '0.5.1'
 $Platform = 'linux/arm64'
 $Out = "$Image-$Tag.tar"
 $OutGz = "$Out.gz"
@@ -34,3 +34,4 @@ Remove-Item $Out -Force
 
 Write-Host ">> Done: $(Resolve-Path $OutGz)"
 Write-Host '   Upload this file in HCUweb -> Plugins -> Install from file.'
+

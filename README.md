@@ -1,4 +1,4 @@
-> 🇬🇧 English | [🇩🇪 Deutsch](README.de.md)
+> ðŸ‡¬ðŸ‡§ English | [ðŸ‡©ðŸ‡ª Deutsch](README.de.md)
 
 <p align="center">
   <img src="icon.svg" alt="hmip-hcu-homeconnect icon" width="128" height="128"/>
@@ -6,7 +6,7 @@
 
 # HMIP HCU Plugin: Home Connect
 
-📦 **[Download hmip-hcu-homeconnect-0.5.0.tar.gz](https://github.com/fabiorenner-hub/hmip-hcu-homeconnect/releases/latest/download/hmip-hcu-homeconnect-0.5.0.tar.gz)** — install via HCUweb → *Developer mode → Plugins → Install from file*.
+ðŸ“¦ **[Download hmip-hcu-homeconnect-0.5.1.tar.gz](https://github.com/fabiorenner-hub/hmip-hcu-homeconnect/releases/latest/download/hmip-hcu-homeconnect-0.5.1.tar.gz)** â€” install via HCUweb â†’ *Developer mode â†’ Plugins â†’ Install from file*.
 
 GitHub: <https://github.com/fabiorenner-hub/hmip-hcu-homeconnect>
 
@@ -17,12 +17,11 @@ Thermador, Constructa) into the Homematic IP system.
 > Inspired by the ioBroker.homeconnect adapter, built against the
 > [Homematic IP Connect API 1.0.1](https://github.com/homematicip/connect-api).
 
-## Support this plugin
+## Support
 
 If this plugin is useful to you, please consider a small donation — it helps
-me keep the lights on while building more HCU plugins.
-
-<form action="https://www.paypal.com/donate" method="post" target="_top"><input type="hidden" name="hosted_button_id" value="JPZRATUUHRT5C" /><input type="image" src="https://www.paypalobjects.com/de_DE/DE/i/btn/btn_donate_SM.gif" border="0" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Spenden mit dem PayPal-Button" /><img alt="" border="0" src="https://www.paypal.com/de_DE/i/scr/pixel.gif" width="1" height="1" /></form>
+me keep the lights on while building more HCU plugins:
+[Donate via PayPal](https://www.paypal.com/donate/?hosted_button_id=JPZRATUUHRT5C).
 
 ## Quick start
 
@@ -44,7 +43,7 @@ me keep the lights on while building more HCU plugins.
 - Automatic device discovery and feature mapping to HCU device archetypes.
 - Switch on/off, monitor connection state, door, operation state, remaining
   time, power consumption (where available).
-- **Program control**: per appliance one extra `SWITCH` — `ON` starts the
+- **Program control**: per appliance one extra `SWITCH` â€” `ON` starts the
   currently selected program, `OFF` aborts it.
 - **Estimated energy meter** per appliance: `ENERGY_METER` with `currentPower`
   and accumulated `energyCounter` in kWh.
@@ -73,5 +72,5 @@ Issued by **Fabio Renner**.
 
 ## License
 
-Apache-2.0. Home Connect is a trademark of BSH Hausgeräte GmbH; Homematic IP
+Apache-2.0. Home Connect is a trademark of BSH HausgerÃ¤te GmbH; Homematic IP
 is a trademark of eQ-3 AG. This project is not affiliated with either company.

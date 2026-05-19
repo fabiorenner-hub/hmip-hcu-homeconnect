@@ -2,7 +2,7 @@
 set -euo pipefail
 
 IMAGE="hmip-hcu-homeconnect"
-TAG="0.5.0"
+TAG="0.5.1"
 PLATFORM="linux/arm64"
 OUT="${IMAGE}-${TAG}.tar"
 OUT_GZ="${OUT}.gz"
@@ -28,3 +28,4 @@ gzip -f "${OUT}"
 
 echo ">> Done: $(pwd)/${OUT_GZ}"
 echo "   Upload this file in HCUweb -> Plugins -> Install from file."
+

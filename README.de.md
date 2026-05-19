@@ -1,4 +1,4 @@
-> [🇬🇧 English](README.md) | 🇩🇪 Deutsch
+> [ðŸ‡¬ðŸ‡§ English](README.md) | ðŸ‡©ðŸ‡ª Deutsch
 
 <p align="center">
   <img src="icon.svg" alt="hmip-hcu-homeconnect Symbolbild" width="128" height="128"/>
@@ -6,12 +6,12 @@
 
 # HMIP HCU Plugin: Home Connect
 
-📦 **[hmip-hcu-homeconnect-0.5.0.tar.gz herunterladen](https://github.com/fabiorenner-hub/hmip-hcu-homeconnect/releases/latest/download/hmip-hcu-homeconnect-0.5.0.tar.gz)** — Installation in HCUweb über *Entwicklermodus → Plugins → Aus Datei installieren*.
+ðŸ“¦ **[hmip-hcu-homeconnect-0.5.1.tar.gz herunterladen](https://github.com/fabiorenner-hub/hmip-hcu-homeconnect/releases/latest/download/hmip-hcu-homeconnect-0.5.1.tar.gz)** â€” Installation in HCUweb Ã¼ber *Entwicklermodus â†’ Plugins â†’ Aus Datei installieren*.
 
 GitHub: <https://github.com/fabiorenner-hub/hmip-hcu-homeconnect>
 
-Ein Node.js-Plugin für die Homematic IP Home Control Unit (HCU), das BSH
-**Home Connect** Geräte (Bosch, Siemens, Gaggenau, NEFF, Thermador, Constructa)
+Ein Node.js-Plugin fÃ¼r die Homematic IP Home Control Unit (HCU), das BSH
+**Home Connect** GerÃ¤te (Bosch, Siemens, Gaggenau, NEFF, Thermador, Constructa)
 ins Homematic IP System integriert.
 
 > Inspiriert vom ioBroker.homeconnect-Adapter, gebaut gegen die
@@ -19,10 +19,9 @@ ins Homematic IP System integriert.
 
 ## Spenden
 
-Wenn dir dieses Plugin hilft, freue ich mich über eine kleine Spende — sie hilft
-mir, weitere HCU-Plugins zu bauen und zu pflegen.
-
-<form action="https://www.paypal.com/donate" method="post" target="_top"><input type="hidden" name="hosted_button_id" value="JPZRATUUHRT5C" /><input type="image" src="https://www.paypalobjects.com/de_DE/DE/i/btn/btn_donate_SM.gif" border="0" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Spenden mit dem PayPal-Button" /><img alt="" border="0" src="https://www.paypal.com/de_DE/i/scr/pixel.gif" width="1" height="1" /></form>
+Wenn dir dieses Plugin hilft, freue ich mich über eine kleine Spende — sie
+hält bei mir die Lichter an, während ich weitere HCU-Plugins baue:
+[Spenden via PayPal](https://www.paypal.com/donate/?hosted_button_id=JPZRATUUHRT5C).
 
 ## Schnellstart
 
@@ -32,24 +31,24 @@ mir, weitere HCU-Plugins zu bauen und zu pflegen.
 2. `hmip-hcu-homeconnect-<version>.tar.gz` aus den
    [Releases](https://github.com/fabiorenner-hub/hmip-hcu-homeconnect/releases)
    laden und auf der HCU installieren.
-3. Plugin-Konfiguration auf der HCU öffnen, Client ID eintragen, speichern.
-4. In den Plugin-Logs die Verifizierungs-URL abgreifen, im Browser öffnen und bestätigen.
-5. Die Home Connect Geräte erscheinen als HCU-Geräte.
+3. Plugin-Konfiguration auf der HCU Ã¶ffnen, Client ID eintragen, speichern.
+4. In den Plugin-Logs die Verifizierungs-URL abgreifen, im Browser Ã¶ffnen und bestÃ¤tigen.
+5. Die Home Connect GerÃ¤te erscheinen als HCU-GerÃ¤te.
 
 ## Funktionen
 
 - **OAuth2 Device Flow** (kein Passwort gespeichert, nur eine Client ID).
-- Live Event Stream über Server-Sent Events (`/api/homeappliances/events`).
-- Automatische Geräteerkennung und Feature-Mapping auf HCU-Gerätearten.
-- Ein/Aus schalten, Verbindungsstatus, Tür, Operation State, Restzeit,
-  Stromverbrauch (wenn verfügbar).
-- **Programmsteuerung**: pro Gerät ein zusätzlicher `SWITCH` — `ON` startet das
-  aktuell auf dem Gerät gewählte Programm, `OFF` bricht es ab.
-- **Geschätzter Energiezähler** pro Gerät: `ENERGY_METER` mit `currentPower`
+- Live Event Stream Ã¼ber Server-Sent Events (`/api/homeappliances/events`).
+- Automatische GerÃ¤teerkennung und Feature-Mapping auf HCU-GerÃ¤tearten.
+- Ein/Aus schalten, Verbindungsstatus, TÃ¼r, Operation State, Restzeit,
+  Stromverbrauch (wenn verfÃ¼gbar).
+- **Programmsteuerung**: pro GerÃ¤t ein zusÃ¤tzlicher `SWITCH` â€” `ON` startet das
+  aktuell auf dem GerÃ¤t gewÃ¤hlte Programm, `OFF` bricht es ab.
+- **GeschÃ¤tzter EnergiezÃ¤hler** pro GerÃ¤t: `ENERGY_METER` mit `currentPower`
   und kumuliertem `energyCounter` in kWh.
-- Umfangreiche **Konfigurationsseite**, vom HCU über `CONFIG_TEMPLATE_RESPONSE`
+- Umfangreiche **Konfigurationsseite**, vom HCU Ã¼ber `CONFIG_TEMPLATE_RESPONSE`
   gerendert.
-- Optionales **HTML Debug Dashboard** mit Live-Logs, Gerätelisten, letzten
+- Optionales **HTML Debug Dashboard** mit Live-Logs, GerÃ¤telisten, letzten
   API-Calls, Rate-Limit-Statistiken und Token-Status.
 - Eingebautes Rate-Limiting, das die Home Connect Quotas respektiert
   (50 Req/Min, ~1000 Req/Tag, Token-Refresh-Limits).
@@ -73,6 +72,6 @@ Herausgegeben von **Fabio Renner**.
 
 ## Lizenz
 
-Apache-2.0. Home Connect ist eine Marke der BSH Hausgeräte GmbH; Homematic IP
+Apache-2.0. Home Connect ist eine Marke der BSH HausgerÃ¤te GmbH; Homematic IP
 ist eine Marke der eQ-3 AG. Dieses Projekt ist mit keinem der beiden Unternehmen
 verbunden.
