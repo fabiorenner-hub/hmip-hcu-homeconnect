@@ -68,6 +68,14 @@ chmod +x build.sh
 
 Issued by **Fabio Renner**.
 
+### Third-party components
+
+- Uses the official [BSH Home Connect Developer API](https://developer.home-connect.com/) under OAuth2 Device Flow.
+- Mapping and OAuth flow inspired by [`ioBroker.homeconnect`](https://github.com/bowm0815/ioBroker.homeconnect) (MIT).
+- [`axios`](https://github.com/axios/axios) — HTTP client (MIT). [`eventsource`](https://github.com/EventSource/eventsource) — SSE client (MIT). [`qs`](https://github.com/ljharb/qs) — query-string parser (BSD-3-Clause).
+- Home Connect is a trademark of BSH Hausgeräte GmbH; brand names (Bosch, Siemens, Gaggenau, NEFF, Thermador, Constructa) belong to their respective owners. This plugin is not affiliated with or endorsed by BSH.
+- Built against the [Homematic IP Connect API 1.0.1](https://github.com/homematicip/connect-api) by eQ-3.
+
 ## License
 
 Apache-2.0. Home Connect is a trademark of BSH Hausgeräte GmbH; Homematic IP
