@@ -1,4 +1,4 @@
-> ðŸ‡¬ðŸ‡§ English | [ðŸ‡©ðŸ‡ª Deutsch](README.de.md)
+> 🇬🇧 English | [🇩🇪 Deutsch](README.de.md)
 
 <p align="center">
   <img src="icon.svg" alt="hmip-hcu-homeconnect icon" width="128" height="128"/>
@@ -6,7 +6,7 @@
 
 # HMIP HCU Plugin: Home Connect
 
-ðŸ“¦ **[Download hmip-hcu-homeconnect-0.5.1.tar.gz](https://github.com/fabiorenner-hub/hmip-hcu-homeconnect/releases/latest/download/hmip-hcu-homeconnect-0.5.1.tar.gz)** â€” install via HCUweb â†’ *Developer mode â†’ Plugins â†’ Install from file*.
+📦 **[Download hmip-hcu-homeconnect-0.5.2.tar.gz](https://github.com/fabiorenner-hub/hmip-hcu-homeconnect/releases/latest/download/hmip-hcu-homeconnect-0.5.2.tar.gz)** — install via HCUweb → *Developer mode → Plugins → Install from file*.
 
 GitHub: <https://github.com/fabiorenner-hub/hmip-hcu-homeconnect>
 
@@ -14,7 +14,7 @@ A Node.js plugin for the Homematic IP Home Control Unit (HCU) that integrates
 BSH **Home Connect** household appliances (Bosch, Siemens, Gaggenau, NEFF,
 Thermador, Constructa) into the Homematic IP system.
 
-> Inspired by the ioBroker.homeconnect adapter, built against the
+> Built against the
 > [Homematic IP Connect API 1.0.1](https://github.com/homematicip/connect-api).
 
 ## Support
@@ -39,17 +39,17 @@ me keep the lights on while building more HCU plugins:
 ## Features
 
 - **OAuth2 Device Flow** login (no user/password stored, only a Client ID).
-- Live event stream via Server-Sent Events (`/api/homeappliances/events`).
+- Live event stream via Server-Sent Events.
 - Automatic device discovery and feature mapping to HCU device archetypes.
 - Switch on/off, monitor connection state, door, operation state, remaining
   time, power consumption (where available).
-- **Program control**: per appliance one extra `SWITCH` â€” `ON` starts the
+- **Program control**: per appliance one extra `SWITCH` — `ON` starts the
   currently selected program, `OFF` aborts it.
 - **Estimated energy meter** per appliance: `ENERGY_METER` with `currentPower`
   and accumulated `energyCounter` in kWh.
-- Extensive **config page** rendered by the HCU via `CONFIG_TEMPLATE_RESPONSE`.
-- Optional **HTML debug dashboard** with live logs, device inventory, last API
-  calls, rate-limit counters and token state.
+- Extensive **config page** rendered by the HCU.
+- Optional **HTML debug dashboard** with live logs, device inventory, last
+  API calls, rate-limit counters and token state.
 - Built-in client-side rate limiting that honors the Home Connect quotas
   (50 req/min, ~1000 req/day, token refresh limits).
 
@@ -64,13 +64,11 @@ chmod +x build.sh
 ./build.sh    # macOS / Linux
 ```
 
-The output is `hmip-hcu-homeconnect-<version>.tar.gz`.
-
 ## Author
 
 Issued by **Fabio Renner**.
 
 ## License
 
-Apache-2.0. Home Connect is a trademark of BSH HausgerÃ¤te GmbH; Homematic IP
+Apache-2.0. Home Connect is a trademark of BSH Hausgeräte GmbH; Homematic IP
 is a trademark of eQ-3 AG. This project is not affiliated with either company.
