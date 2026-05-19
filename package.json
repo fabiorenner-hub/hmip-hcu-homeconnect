@@ -7,7 +7,8 @@
     "start": "node src/index.js",
     "dev": "node src/index.js de.kiro.plugin.homeconnect localhost ./TOKEN",
     "test": "node tests/smoke.js && node tests/dashboard.js",
-    "lint": "eslint src/"
+    "lint": "eslint src/",
+    "package": "node scripts/build-tarball.js"
   },
   "keywords": [
     "homematicip",

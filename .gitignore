@@ -8,3 +8,4 @@ _refs/
 .kiro/
 data/
 plugin-state.json
+dist/*.tar.gz
