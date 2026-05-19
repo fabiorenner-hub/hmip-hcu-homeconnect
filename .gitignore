@@ -1,0 +1,10 @@
+node_modules/
+npm-debug.log
+TOKEN
+.env
+*.log
+.vscode/
+_refs/
+.kiro/
+data/
+plugin-state.json
