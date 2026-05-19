@@ -9,3 +9,7 @@ _refs/
 data/
 plugin-state.json
 dist/*.tar.gz
+
+# Locally built tar.gz at repo root
+hmip-hcu-homeconnect-*.tar.gz
+

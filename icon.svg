@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Home Connect Plugin">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1b2233"/>
+      <stop offset="100%" stop-color="#0a0d12"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <path d="M88 264 L256 120 L424 264 L424 408 a16 16 0 0 1 -16 16 L104 424 a16 16 0 0 1 -16 -16 Z" fill="#e9ecef"/>
+  <rect x="232" y="328" width="48" height="96" rx="6" fill="#495057"/>
+  <rect x="156" y="296" width="56" height="56" rx="4" fill="#1c7ed6"/>
+  <line x1="184" y1="296" x2="184" y2="352" stroke="#a5d8ff" stroke-width="3"/>
+  <line x1="156" y1="324" x2="212" y2="324" stroke="#a5d8ff" stroke-width="3"/>
+  <rect x="300" y="296" width="56" height="56" rx="4" fill="#1c7ed6"/>
+  <line x1="328" y1="296" x2="328" y2="352" stroke="#a5d8ff" stroke-width="3"/>
+  <line x1="300" y1="324" x2="356" y2="324" stroke="#a5d8ff" stroke-width="3"/>
+  <g fill="none" stroke="#22b8cf" stroke-width="8" stroke-linecap="round">
+    <path d="M210 128 a64 64 0 0 1 92 0"/>
+    <path d="M232 152 a32 32 0 0 1 48 0"/>
+  </g>
+  <circle cx="256" cy="180" r="6" fill="#22b8cf"/>
+</svg>
