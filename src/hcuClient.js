@@ -103,7 +103,12 @@ class HcuClient {
 		}
 		this.stats.received += 1;
 		this._record('in', msg);
-		this.logger.debug('<- HCU', msg.type, msg.id);
+		if (this.logger.level === 'debug') {
+			this.logger.debug(`<- HCU ${msg.type} ${msg.id || ''}`);
+			try { this.logger.debug(`   body: ${JSON.stringify(msg.body)}`); } catch { /* ignore */ }
+		} else {
+			this.logger.debug('<- HCU', msg.type, msg.id);
+		}
 
 		switch (msg.type) {
 			case 'PLUGIN_STATE_REQUEST':
@@ -121,6 +126,28 @@ class HcuClient {
 			case 'CONTROL_REQUEST':
 				this._safe('onControlRequest', msg);
 				break;
+			case 'ERROR_RESPONSE': {
+				// HCU sends ERROR_RESPONSE when it rejects one of our messages
+				// (typically with the same id as the offending request). Surface
+				// the full body so we can see what went wrong.
+				let detail = '';
+				try { detail = JSON.stringify(msg.body); } catch { detail = String(msg.body); }
+				this.logger.warn(`HCU rejected our message id=${msg.id}: ${detail}`);
+				this._safe('onErrorResponse', msg);
+				break;
+			}
+			case 'INCLUSION_EVENT': {
+				const ids = msg?.body?.deviceIds || [];
+				this.logger.info(`HCU confirms inclusion of ${ids.length} device(s): ${ids.join(', ')}`);
+				this._safe('onInclusionEvent', msg);
+				break;
+			}
+			case 'EXCLUSION_EVENT': {
+				const ids = msg?.body?.deviceIds || [];
+				this.logger.info(`HCU excluded ${ids.length} device(s): ${ids.join(', ')}`);
+				this._safe('onExclusionEvent', msg);
+				break;
+			}
 			case 'CREATE_USER_MESSAGE_RESPONSE':
 			case 'DELETE_USER_MESSAGE_RESPONSE':
 			case 'LIST_USER_MESSAGES_RESPONSE':
@@ -148,10 +175,12 @@ class HcuClient {
 			this.logger.warn('Cannot send, WebSocket not open:', envelope?.type);
 			return false;
 		}
+		// Important: spread `envelope` first so that the explicit `id` fallback
+		// applied here is not overwritten by an envelope.id of `undefined`.
 		const out = {
+			...envelope,
 			pluginId: this.pluginId,
 			id: envelope.id || uuidv4(),
-			...envelope,
 		};
 		this.ws.send(JSON.stringify(out));
 		this.stats.sent += 1;
@@ -195,11 +224,15 @@ class HcuClient {
 		});
 	}
 
-	sendConfigUpdateResponse(replyTo, status, message) {
+	sendConfigUpdateResponse(replyTo, status, message, languageCode) {
+		const body = { status };
+		if (message != null) {
+			body.message = pickLocalizedMessage(message, languageCode);
+		}
 		return this.send({
 			id: replyTo,
 			type: 'CONFIG_UPDATE_RESPONSE',
-			body: { status, ...(message ? { message } : {}) },
+			body,
 		});
 	}
 
@@ -240,4 +273,22 @@ class HcuClient {
 	}
 }
 
-module.exports = { HcuClient };
+/**
+ * ConfigUpdateResponse.message is a plain String (per Connect API spec
+ * §6.3.2). Internally we keep the i18n map { en, de } so we can localize
+ * later. This helper picks the right string based on the requested language.
+ */
+function pickLocalizedMessage(message, languageCode) {
+	if (typeof message === 'string') return message;
+	if (message && typeof message === 'object') {
+		const lc = (languageCode || '').toLowerCase().slice(0, 2);
+		if (lc && message[lc]) return message[lc];
+		if (message.en) return message.en;
+		if (message.de) return message.de;
+		const first = Object.values(message).find(v => typeof v === 'string');
+		if (first) return first;
+	}
+	return String(message ?? '');
+}
+
+module.exports = { HcuClient, pickLocalizedMessage };

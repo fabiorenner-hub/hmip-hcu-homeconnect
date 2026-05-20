@@ -25,6 +25,7 @@ const { Plugin } = require('../src/index');
 		host: '127.0.0.1',
 		tokenFile,
 	});
+	plugin.setup.start = () => {};
 
 	const PORT = 18133;
 	plugin.dashboard.start(PORT);

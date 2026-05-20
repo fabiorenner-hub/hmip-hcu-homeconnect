@@ -31,6 +31,7 @@ class StateStore {
 			config: { ...DEFAULT_CONFIG },
 			session: null, // { access_token, refresh_token, expires_in, next }
 			lastVerificationUrl: null,
+			lastVerificationStatus: null, // { state: 'pending'|'ok'|'error', message, at }
 			discoveredAppliances: {}, // haId -> { type, name, enumber, vib, brand, connected }
 			energyCounters: {}, // haId -> kWh accumulated
 		};
@@ -45,6 +46,10 @@ class StateStore {
 				const parsed = JSON.parse(raw);
 				this.data.config = { ...DEFAULT_CONFIG, ...(parsed.config || {}) };
 				this.data.session = parsed.session || null;
+				// lastVerificationUrl / lastVerificationStatus are intentionally
+				// NOT restored from disk — verification URLs from a previous run
+				// are always stale (device codes expire after ~30 min) and
+				// showing them confuses the user.
 				this.data.discoveredAppliances = parsed.discoveredAppliances || {};
 				this.data.energyCounters = parsed.energyCounters || {};
 				this.logger.info('State loaded from', this.file);
@@ -62,7 +67,12 @@ class StateStore {
 			if (!fs.existsSync(dir)) {
 				fs.mkdirSync(dir, { recursive: true });
 			}
-			fs.writeFileSync(this.file, JSON.stringify(this.data, null, 2), 'utf8');
+			// Strip ephemeral fields before writing — they have no meaning
+			// across plugin restarts.
+			const persisted = { ...this.data };
+			delete persisted.lastVerificationUrl;
+			delete persisted.lastVerificationStatus;
+			fs.writeFileSync(this.file, JSON.stringify(persisted, null, 2), 'utf8');
 		} catch (e) {
 			this.logger.error('Failed to save state:', e);
 		}
@@ -86,6 +96,9 @@ class StateStore {
 
 	get lastVerificationUrl() { return this.data.lastVerificationUrl; }
 	set lastVerificationUrl(value) { this.data.lastVerificationUrl = value; }
+
+	get lastVerificationStatus() { return this.data.lastVerificationStatus; }
+	set lastVerificationStatus(value) { this.data.lastVerificationStatus = value; this.scheduleSave(); }
 
 	upsertAppliance(haId, info) {
 		this.data.discoveredAppliances[haId] = { ...this.data.discoveredAppliances[haId], ...info };

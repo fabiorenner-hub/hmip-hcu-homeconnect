@@ -25,15 +25,19 @@ jobs:
       - name: Run tests
         run: npm test
 
-      - name: Build source tarball
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build HCU plugin image tarball
         run: npm run package
 
-      - name: Upload tarball to release
+      - name: Upload HCU plugin tarball to release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*.tar.gz
+          files: dist/hmip-hcu-homeconnect-*.tar.gz
           draft: false
           prerelease: false
           body_path: .github/release-notes-${{ github.ref_name }}.md
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

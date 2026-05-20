@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const path = require('path');
 
@@ -11,6 +11,7 @@ const { HomeConnectEvents } = require('./homeconnect/events');
 const { buildConfigTemplate, applyConfigUpdate } = require('./config');
 const { buildDevices, controlRequestToAction, applianceUpdateToFeatures, APPLIANCES_WITH_PROGRAMS, APPLIANCES_WITH_ENERGY, typicalPowerForType } = require('./mapping');
 const { DebugDashboard } = require('./dashboard');
+const { SetupServer } = require('./setupServer');
 
 class Plugin {
 	constructor({ pluginId, host, tokenFile }) {
@@ -39,7 +40,10 @@ class Plugin {
 		this.auth = new HomeConnectAuth({
 			logger: this.logger,
 			state: this.state,
-			onVerificationUrl: url => this._announceVerificationUrl(url),
+			onVerificationUrl: url => {
+				this._announceVerificationUrl(url);
+				this.setup.broadcastState();
+			},
 		});
 		this.api = new HomeConnectApi({ auth: this.auth, state: this.state, logger: this.logger });
 		this.events = new HomeConnectEvents({
@@ -55,16 +59,18 @@ class Plugin {
 			logger: this.logger,
 			handlers: {
 				onConnected: () => this._onHcuConnected(),
-				onDisconnected: () => { this.readiness = 'PLUGIN_NOT_CONFIGURED_YET'; },
+				onDisconnected: () => { this.readiness = 'CONFIG_REQUIRED'; },
 				onPluginStateRequest: msg => this.hcu.sendPluginReady(this.readiness, msg.id),
 				onConfigTemplateRequest: msg => this._handleConfigTemplate(msg),
 				onConfigUpdateRequest: msg => this._handleConfigUpdate(msg),
 				onDiscoverRequest: msg => this._handleDiscover(msg),
 				onControlRequest: msg => this._handleControl(msg),
+				onExclusionEvent: msg => this._handleExclusion(msg),
 			},
 		});
 
 		this.dashboard = new DebugDashboard({ logger: this.logger, plugin: this });
+		this.setup = new SetupServer({ logger: this.logger, plugin: this });
 
 		// HCU device cache: deviceId -> hcuDevice
 		this.hcuDevices = new Map();
@@ -73,7 +79,7 @@ class Plugin {
 		this.applianceStatus = {};
 		this.appliancePrograms = {}; // haId -> { selected, available }
 		this.eventStreamActive = false;
-		this.readiness = 'PLUGIN_NOT_CONFIGURED_YET';
+		this.readiness = 'CONFIG_REQUIRED';
 		this.refreshTimer = null;
 		this.pollTimer = null;
 		this.energyTimer = null;
@@ -83,8 +89,9 @@ class Plugin {
 	}
 
 	async start() {
-		this.logger.info(`Starting plugin ${this.pluginId} → HCU ${this.host}`);
+		this.logger.info(`Starting plugin ${this.pluginId} â†’ HCU ${this.host}`);
 		this._startDashboardIfEnabled();
+		this._updateSetupServer();
 
 		await this.hcu.start();
 
@@ -92,6 +99,28 @@ class Plugin {
 		this._initHomeConnect().catch(e => this.logger.error('HC initialization failed:', e.message));
 
 		this._installSignalHandlers();
+	}
+
+	/**
+	 * Setup wizard runs while the user is not authenticated. Once a valid
+	 * Home Connect session is present, the wizard shuts down so its URL
+	 * stops being reachable.
+	 *
+	 * Note: with the HCU's container sandbox the wizard port is generally
+	 * NOT reachable from the LAN (container IP only). Users sign in via the
+	 * Home Connect verification link rendered directly in the HCUweb config
+	 * page. The wizard is kept around for advanced setups where the
+	 * container port has been exposed to the LAN.
+	 */
+	_updateSetupServer() {
+		const loggedIn = !!this.state.session?.access_token;
+		if (loggedIn) {
+			// Push the final "done" state to any open browser, then stop a
+			// few seconds later so the page can render the success screen.
+			this.setup.stopGracefully();
+		} else {
+			this.setup.start();
+		}
 	}
 
 	_startDashboardIfEnabled() {
@@ -110,6 +139,7 @@ class Plugin {
 			this.events.stop();
 			this.hcu.stop();
 			this.dashboard.stop();
+			this.setup.stop();
 			if (this.refreshTimer) clearTimeout(this.refreshTimer);
 			if (this.pollTimer) clearInterval(this.pollTimer);
 			if (this.energyTimer) clearInterval(this.energyTimer);
@@ -122,7 +152,7 @@ class Plugin {
 
 	async _initHomeConnect() {
 		if (!this.state.config.clientId) {
-			this.readiness = 'PLUGIN_NOT_CONFIGURED_YET';
+			this.readiness = 'CONFIG_REQUIRED';
 			this.logger.warn('No clientId configured. Plugin stays unconfigured until set.');
 			return;
 		}
@@ -143,30 +173,72 @@ class Plugin {
 
 			this._scheduleTokenRefresh();
 			await this._refreshAppliances();
-			this.events.start();
-			this.eventStreamActive = true;
+
+			// The event stream is best-effort. A failure here (e.g. a broken
+			// EventSource binding) must not invalidate a successful login â€”
+			// devices were already discovered and the HCU should see READY.
+			try {
+				this.events.start();
+				this.eventStreamActive = true;
+			} catch (e) {
+				this.eventStreamActive = false;
+				this.logger.warn(`Event stream setup failed: ${e.message}. Falling back to polling only.`);
+			}
+
 			this.readiness = 'READY';
 			if (this.hcu.connected) {
 				this.hcu.sendPluginReady('READY');
+				// Tell the user that everything worked. The user message hits
+				// the Homematic IP smartphone app immediately, while the HCUweb
+				// configuration page may still show the old verification link
+				// until the user reloads it.
+				this.hcu.sendUserMessage({
+					messageCategory: 'INFO',
+					userMessageId: 'hc-login-success',
+					title: { en: 'Home Connect connected', de: 'Home Connect verbunden' },
+					message: {
+						en: `Sign-in successful. ${this.hcuDevices.size} device(s) are now available in Homematic IP.`,
+						de: `Anmeldung erfolgreich. ${this.hcuDevices.size} Geräte sind jetzt in Homematic IP verfügbar.`,
+					},
+					behaviorType: 'DISMISSIBLE',
+				});
+				// Clean up any leftover "login required / failed" message.
+				this.hcu.deleteUserMessage('hc-login-required');
+				this.hcu.deleteUserMessage('hc-login-failed');
 			}
 			this._configurePolling();
 			this._startEnergyTracker();
+			// Broadcast the new "done" state to the wizard before we tell
+			// the lifecycle to shut it down (stopGracefully also broadcasts).
+			this.setup.broadcastState();
+			this._updateSetupServer();
 		} catch (e) {
 			this.logger.error('Home Connect setup failed:', e.message);
-			this.readiness = 'PLUGIN_NOT_CONFIGURED_YET';
+			if (e.oauthError || e.oauthErrorDescription) {
+				this.logger.error(`OAuth error: ${e.oauthError || ''} ${e.oauthErrorDescription || ''}`.trim());
+			}
+			this.state.lastVerificationStatus = {
+				state: 'error',
+				message: e.oauthErrorDescription || e.oauthError || e.message,
+				at: new Date().toISOString(),
+			};
+			this.readiness = 'CONFIG_REQUIRED';
 			if (this.hcu.connected) {
-				this.hcu.sendPluginReady('PLUGIN_NOT_CONFIGURED_YET');
+				this.hcu.sendPluginReady('CONFIG_REQUIRED');
+				const detail = e.oauthErrorDescription || e.oauthError || e.message;
 				this.hcu.sendUserMessage({
 					messageCategory: 'ERROR',
 					userMessageId: 'hc-login-failed',
 					title: { en: 'Home Connect login failed', de: 'Home Connect Anmeldung fehlgeschlagen' },
 					message: {
-						en: 'Open the plugin debug dashboard or logs to retrieve the verification URL.',
-						de: 'Öffne das Debug-Dashboard oder die Logs, um die Verifizierungs-URL zu erhalten.',
+						en: `Home Connect rejected the login: ${detail}. Verify the Client ID and that the Device Flow is enabled in the Home Connect developer portal.`,
+						de: `Home Connect hat die Anmeldung abgelehnt: ${detail}. Pruefe die Client ID und ob im Home Connect Entwicklerportal der "Device Flow" aktiviert ist.`,
 					},
 					behaviorType: 'DISMISSIBLE',
 				});
 			}
+			this._updateSetupServer();
+			this.setup.broadcastState();
 		}
 	}
 
@@ -295,7 +367,7 @@ class Plugin {
 	}
 
 	_onHcuConnected() {
-		this.readiness = this.state.session?.access_token ? 'READY' : 'PLUGIN_NOT_CONFIGURED_YET';
+		this.readiness = this.state.session?.access_token ? 'READY' : 'CONFIG_REQUIRED';
 		this.hcu.sendPluginReady(this.readiness);
 	}
 
@@ -307,7 +379,7 @@ class Plugin {
 				title: { en: 'Home Connect login required', de: 'Home Connect Anmeldung erforderlich' },
 				message: {
 					en: `Open this URL: ${url}`,
-					de: `Bitte folgende URL öffnen: ${url}`,
+					de: `Bitte folgende URL Ã¶ffnen: ${url}`,
 				},
 				behaviorType: 'DISMISSIBLE',
 			});
@@ -315,12 +387,14 @@ class Plugin {
 	}
 
 	_handleConfigTemplate(msg) {
-		const body = buildConfigTemplate(this.state);
+		const languageCode = msg?.body?.languageCode;
+		const body = buildConfigTemplate(this.state, languageCode);
 		this.hcu.sendConfigTemplate(msg.id, body);
 	}
 
 	async _handleConfigUpdate(msg) {
 		const props = msg?.body?.properties || {};
+		const languageCode = msg?.body?.languageCode;
 		this.logger.info('Config update received:', Object.keys(props).join(', '));
 
 		const oldClientId = this.state.config.clientId;
@@ -343,14 +417,6 @@ class Plugin {
 			this.state.config = { ...config, resetSession: false };
 		}
 
-		if (config.clientId !== oldClientId || config.resetSession) {
-			this.hcu.sendConfigUpdateResponse(msg.id, 'PENDING', {
-				en: 'Restarting Home Connect login...',
-				de: 'Home Connect Anmeldung wird neu gestartet...',
-			});
-			this._initHomeConnect().catch(e => this.logger.error('Re-init failed:', e.message));
-		}
-
 		if (config.debugDashboard !== oldDashboard || config.debugDashboardPort !== oldDashboardPort) {
 			if (config.debugDashboard) {
 				this.dashboard.start(config.debugDashboardPort);
@@ -367,10 +433,71 @@ class Plugin {
 			this._startEnergyTracker();
 		}
 
+		const needsLogin = config.clientId !== oldClientId || config.resetSession;
+		if (needsLogin) {
+			// Kick off the device flow, then briefly wait for the verification
+			// URL so we can include it in the CONFIG_UPDATE_RESPONSE message â€”
+			// HCUweb renders that text in the post-save dialog. After the user
+			// clicks Save in HCUweb the page typically reloads anyway, so the
+			// new template (with the WEBLINK + QRCODE) is shown right after.
+			this._initHomeConnect().catch(e => this.logger.error('Re-init failed:', e.message));
+			const url = await this._waitForVerificationUrl(8000);
+			if (url) {
+				this.hcu.sendConfigUpdateResponse(msg.id, 'APPLIED', {
+					en: `Open this link in any browser to finish the Home Connect login: ${url}`,
+					de: `Anmeldung bei Home Connect: bitte folgenden Link in einem Browser Ã¶ffnen und bestÃ¤tigen: ${url}`,
+				}, languageCode);
+				return;
+			}
+			const status = this.state.lastVerificationStatus;
+			if (status?.state === 'error') {
+				this.hcu.sendConfigUpdateResponse(msg.id, 'FAILED', {
+					en: `Home Connect login failed: ${status.message}`,
+					de: `Home Connect Anmeldung fehlgeschlagen: ${status.message}`,
+				}, languageCode);
+				return;
+			}
+			this.hcu.sendConfigUpdateResponse(msg.id, 'APPLIED', {
+				en: 'Configuration saved. Reload the plugin configuration page to see the Home Connect login link.',
+				de: 'Konfiguration gespeichert. Lade die Plugin-Konfigurationsseite neu, um den Home Connect Anmeldelink zu sehen.',
+			}, languageCode);
+			return;
+		}
+
 		this.hcu.sendConfigUpdateResponse(msg.id, 'APPLIED', {
 			en: 'Configuration applied.',
-			de: 'Konfiguration übernommen.',
-		});
+			de: 'Konfiguration Ã¼bernommen.',
+		}, languageCode);
+	}
+
+	/**
+	 * Wait up to `timeoutMs` for either `state.lastVerificationUrl` or a
+	 * non-pending lastVerificationStatus. Returns the URL or null on timeout.
+	 */
+	async _waitForVerificationUrl(timeoutMs) {
+		const start = Date.now();
+		while (Date.now() - start < timeoutMs) {
+			if (this.state.session?.access_token) return null; // already logged in
+			if (this.state.lastVerificationUrl) return this.state.lastVerificationUrl;
+			if (this.state.lastVerificationStatus?.state === 'error') return null;
+			await new Promise(r => setTimeout(r, 200));
+		}
+		return null;
+	}
+
+	/**
+	 * Wait up to `timeoutMs` for either `state.lastVerificationUrl` or a
+	 * non-pending lastVerificationStatus. Returns the URL or null on timeout.
+	 */
+	async _waitForVerificationUrl(timeoutMs) {
+		const start = Date.now();
+		while (Date.now() - start < timeoutMs) {
+			if (this.state.session?.access_token) return null; // already logged in
+			if (this.state.lastVerificationUrl) return this.state.lastVerificationUrl;
+			if (this.state.lastVerificationStatus?.state === 'error') return null;
+			await new Promise(r => setTimeout(r, 200));
+		}
+		return null;
 	}
 
 	_handleDiscover(msg) {
@@ -383,6 +510,20 @@ class Plugin {
 			features: d.features,
 		}));
 		this.hcu.sendDiscoverResponse(msg.id, devices);
+	}
+
+	/**
+	 * The HCU sends EXCLUSION_EVENT when the user removes one of our devices
+	 * from the HCU device list. Drop the device from our local cache so we
+	 * stop emitting STATUS_EVENTs for it.
+	 */
+	_handleExclusion(msg) {
+		const ids = msg?.body?.deviceIds || [];
+		for (const id of ids) {
+			if (this.hcuDevices.has(id)) {
+				this.hcuDevices.delete(id);
+			}
+		}
 	}
 
 	async _handleControl(msg) {
@@ -413,7 +554,7 @@ class Plugin {
 				if (!selected?.key) {
 					this.hcu.sendControlResponse(msg.id, deviceId, false, {
 						code: 'NO_PROGRAM_SELECTED',
-						message: 'Wähle zuerst auf dem Gerät ein Programm aus.',
+						message: 'WÃ¤hle zuerst auf dem GerÃ¤t ein Programm aus.',
 					});
 					return;
 				}
@@ -660,3 +801,4 @@ if (require.main === module) {
 }
 
 module.exports = { Plugin };
+

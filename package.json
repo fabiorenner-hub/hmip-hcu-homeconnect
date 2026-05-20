@@ -1,14 +1,14 @@
 {
   "name": "hmip-plugin-homeconnect",
-  "version": "0.5.2",
+  "version": "0.6.6",
   "description": "Homematic IP HCU plugin to integrate Home Connect (BSH) household appliances",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
     "dev": "node src/index.js de.kiro.plugin.homeconnect localhost ./TOKEN",
-    "test": "node tests/smoke.js && node tests/dashboard.js",
+    "test": "node tests/smoke.js && node tests/dashboard.js && node tests/setup-render.js",
     "lint": "eslint src/",
-    "package": "node scripts/build-tarball.js"
+    "package": "node scripts/build-image.js"
   },
   "keywords": [
     "homematicip",
@@ -22,6 +22,7 @@
   "dependencies": {
     "axios": "^1.7.7",
     "eventsource": "^2.0.2",
+    "qrcode": "^1.5.4",
     "qs": "^6.13.0",
     "uuid": "^11.1.0",
     "ws": "^8.18.3"

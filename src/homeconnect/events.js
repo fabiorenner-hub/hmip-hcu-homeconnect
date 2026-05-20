@@ -1,6 +1,10 @@
 'use strict';
 
-const { EventSource } = require('eventsource');
+// `eventsource` 2.x exports the constructor as the CommonJS default
+// (i.e. `module.exports = EventSource`), so destructuring fails:
+//   const { EventSource } = require('eventsource'); // -> undefined
+// Use the default export directly.
+const EventSource = require('eventsource');
 const { HC_BASE } = require('./auth');
 
 /**
@@ -59,15 +63,10 @@ class HomeConnectEvents {
 		const url = `${HC_BASE}/api/homeappliances/events`;
 		this.logger.debug('Connecting to Home Connect event stream');
 		this.es = new EventSource(url, {
-			fetch: (input, init) =>
-				fetch(input, {
-					...init,
-					headers: {
-						...init.headers,
-						Authorization: `Bearer ${token}`,
-						Accept: 'text/event-stream',
-					},
-				}),
+			headers: {
+				Authorization: `Bearer ${token}`,
+				Accept: 'text/event-stream',
+			},
 		});
 
 		this.es.onerror = err => {

@@ -4,79 +4,177 @@
   <img src="icon.svg" alt="hmip-hcu-homeconnect icon" width="128" height="128"/>
 </p>
 
-# HMIP HCU Plugin: Home Connect
+# Home Connect for Homematic IP
 
-📦 **[Download hmip-hcu-homeconnect-0.5.2.tar.gz](https://github.com/fabiorenner-hub/hmip-hcu-homeconnect/releases/latest/download/hmip-hcu-homeconnect-0.5.2.tar.gz)** — install via HCUweb → *Developer mode → Plugins → Install from file*.
+Bring your Bosch, Siemens, Gaggenau, NEFF, Thermador or Constructa appliances
+into Homematic IP. Without a cloud bridge, without a Raspberry Pi.
 
-GitHub: <https://github.com/fabiorenner-hub/hmip-hcu-homeconnect>
+📦 **[Download the latest plugin](https://github.com/fabiorenner-hub/hmip-hcu-homeconnect/releases/latest)** — install via *HCUweb → Developer mode → Plugins → Install from file*.
 
-A Node.js plugin for the Homematic IP Home Control Unit (HCU) that integrates
-BSH **Home Connect** household appliances (Bosch, Siemens, Gaggenau, NEFF,
-Thermador, Constructa) into the Homematic IP system.
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Connect API 1.0.1](https://img.shields.io/badge/Connect%20API-1.0.1-green)](https://github.com/homematicip/connect-api)
 
-> Built against the
-> [Homematic IP Connect API 1.0.1](https://github.com/homematicip/connect-api).
+---
 
-## Support
+## What it does
 
-If this plugin is useful to you, please consider a small donation — it helps
-me keep the lights on while building more HCU plugins:
-[Donate via PayPal](https://www.paypal.com/donate/?hosted_button_id=JPZRATUUHRT5C).
+After three minutes of setup your appliances appear as Homematic IP devices.
+You can switch power, monitor remaining cycle time, start the selected
+program, see the door state and read estimated energy use — all directly in
+the Homematic IP app, in scenes, in groups and in automations.
 
-## Quick start
+| Feature                    | What you get                                 |
+| -------------------------- | -------------------------------------------- |
+| ⚡ Power                    | `SWITCH` — turn the appliance on or off      |
+| 💡 Cavity light            | `LIGHT` — control hood, oven or fridge light |
+| 🌡️ Cooling temperature     | `CLIMATE_SENSOR` — fridge / freezer setpoint |
+| ▶️ Program control          | `SWITCH` — start / abort selected program    |
+| 🔌 Estimated energy        | `ENERGY_METER` — `currentPower` and `kWh`    |
 
-1. Register a free developer account at
-   [developer.home-connect.com](https://developer.home-connect.com) and create
-   an application using **Device Flow** as the OAuth flow. Copy the `Client ID`.
-2. Download `hmip-hcu-homeconnect-<version>.tar.gz` from the
-   [Releases](https://github.com/fabiorenner-hub/hmip-hcu-homeconnect/releases)
-   and install it on your HCU.
-3. Open the plugin configuration on the HCU, enter your Client ID, save.
-4. Watch the plugin logs for the verification URL, open it in your browser
-   and approve.
-5. Your Home Connect appliances appear as HCU devices.
+The plugin uses the live Home Connect event stream, so state changes show up
+in seconds — no polling required.
 
-## Features
+## Setup in 3 steps
 
-- **OAuth2 Device Flow** login (no user/password stored, only a Client ID).
-- Live event stream via Server-Sent Events.
-- Automatic device discovery and feature mapping to HCU device archetypes.
-- Switch on/off, monitor connection state, door, operation state, remaining
-  time, power consumption (where available).
-- **Program control**: per appliance one extra `SWITCH` — `ON` starts the
-  currently selected program, `OFF` aborts it.
-- **Estimated energy meter** per appliance: `ENERGY_METER` with `currentPower`
-  and accumulated `energyCounter` in kWh.
-- Extensive **config page** rendered by the HCU.
-- Optional **HTML debug dashboard** with live logs, device inventory, last
-  API calls, rate-limit counters and token state.
-- Built-in client-side rate limiting that honors the Home Connect quotas
-  (50 req/min, ~1000 req/day, token refresh limits).
+### Step 1 — Get a Client ID
 
-## Building
+1. Open [developer.home-connect.com/applications](https://developer.home-connect.com/applications)
+   and sign in. If you don't have an account yet, click *Register*
+   (it's free and takes about 1 minute).
+2. Once you're in the dashboard, click **Register Application** in the top right.
+3. Fill in the form **exactly** like this:
+
+   | Field | Value | Notes |
+   | ----- | ----- | ----- |
+   | Application ID | anything, e.g. `HCU Plugin` | Visible only to you |
+   | OAuth Flow | **`Device Flow`** | ⚠️ **This is the most common mistake — must be Device Flow, not Authorization Code Grant Flow.** |
+   | Home Connect User Account for Testing | your own Home Connect e-mail | The same account that owns the appliances |
+   | Success Redirect | *(empty)* | Not used by Device Flow |
+   | One Time Token Mode | *Disabled* | |
+   | Proof Key for Code Exchange | *Disabled* | |
+
+4. Click **Save**.
+5. On the application details page, copy the **Client ID** — a string of
+   64 hex characters (uppercase). You **don't** need the Client Secret.
+
+### Step 2 — Install the plugin
+
+1. Download the latest `hmip-hcu-homeconnect-<version>.tar.gz` from the
+   [Releases page](https://github.com/fabiorenner-hub/hmip-hcu-homeconnect/releases).
+2. In HCUweb, enable *Developer mode*, open the *Plugins* page, click
+   *Install from file* and upload the tarball.
+3. After a few seconds the plugin appears in the list.
+
+### Step 3 — Sign in
+
+1. Open the plugin's configuration page in HCUweb.
+2. Paste the **Client ID** and click *Save*.
+3. The page shows a **login link** and a **QR code** in the *Login* section.
+   The link points directly to `api.home-connect.com` and works from any
+   browser — your laptop, your phone, anything with internet.
+4. Open the link (or scan the QR code with your phone), sign in with the
+   Home Connect account configured in your developer application and
+   click *Allow*.
+5. Reload the plugin configuration page once. The status switches to
+   `✓ Connected to Home Connect.` and your appliances appear in the
+   Homematic IP app.
+
+That's it. The plugin remembers your login across HCU restarts.
+
+### How to start over
+
+If you ever need to log in again (for example after rotating the Client ID),
+open the plugin configuration page, enable **Restart login** and save. A
+fresh login link appears.
+
+### Advanced: setup wizard on port 8124
+
+The plugin also exposes a richer setup wizard on `http://<container-IP>:8124/`.
+On a stock HCU this port is **not** reachable from the LAN (the plugin runs
+inside a container sandbox, only the HCU itself can reach the port). It is
+included for advanced setups where you've exposed the port to the LAN
+manually.
+
+## Configuration reference
+
+Everything except the Client ID has a sensible default.
+
+| Section | Setting | Default | Notes |
+| ------- | ------- | ------- | ----- |
+| Login | Client ID | *(empty)* | 64 hex chars from Home Connect Developer Portal |
+| Login | Restart login | off | Enable + save to discard the stored login and start a fresh device flow |
+| Devices | On/off switch | on | Power per appliance |
+| Devices | Cavity / ambient light | on | Hood, oven, fridge inner light |
+| Devices | Cooling temperature | on | Fridge / freezer setpoint |
+| Devices | Program control | on | Start the selected program (ON), abort (OFF) |
+| Devices | Energy meter | on | Estimated `currentPower` + accumulated `kWh` |
+| Advanced | Language | `de-DE` | Language for program names |
+| Advanced | Polling interval | 0 (off) | In addition to the live event stream |
+| Advanced | Diagnostic dashboard | off | Web UI on `http://<HCU-IP>:8123/` |
+| Advanced | Verbose logging | off | Logs every API and HCU frame |
+
+## Diagnostic dashboard (optional)
+
+Enable *Diagnostic dashboard* in *Advanced*. The plugin then serves a small
+web UI at `http://<HCU-IP>:8123/` with seven tabs:
+
+- **Overview** — readiness, HCU connection, Home Connect token state
+- **Devices** — every appliance with live settings and status
+- **API** — raw `GET/PUT/POST/DELETE` console for the Home Connect REST API
+- **Events** — live SSE stream
+- **Energy** — sparkline charts and the kWh counters
+- **Logs** — filterable log stream
+- **Config** — current configuration, JSON-formatted
+
+Don't expose this dashboard outside your trusted network — it does no auth.
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+| ------- | ------------ | --- |
+| `unauthorized_client: client not authorized for this oauth flow` | The application in the Home Connect portal is set to *Authorization Code Grant Flow*. | In the developer portal, change the OAuth flow of the application to **Device Flow**. |
+| `unauthorized_client: client has limited user list - user not assigned to client` | You're trying to log in with a different account than the one configured in the application. | In the developer portal under *Home Connect User Account for testing*, set the e-mail of the account you sign in with. |
+| `Configuration applied` but the appliances never appear | Login link still pending. | Open the login link from the plugin configuration page or its QR code, sign in, then reload the configuration page. |
+| Plugin keeps reporting `Konfiguration ausstehend` | Client ID is wrong (must be exactly 64 hex chars). | Re-copy the Client ID from the Home Connect portal. |
+
+For deeper analysis enable *Verbose logging* and check the plugin logs in
+HCUweb — every HTTP exchange with Home Connect is logged with status code,
+`x-request-id` and OAuth `error` / `error_description`.
+
+## Building from source
 
 ```powershell
-./build.ps1   # Windows
+# Windows
+./build.ps1
 ```
 
 ```bash
+# macOS / Linux
 chmod +x build.sh
-./build.sh    # macOS / Linux
+./build.sh
 ```
 
-## Author
+The build script reads the version from `package.json`, builds a
+`linux/arm64` Docker image with the Connect API metadata label, runs
+`docker save`, gzips the result into `dist/hmip-hcu-homeconnect-<version>.tar.gz`
+and mirrors it into the repo root.
+
+Run the test suite with `npm test` (smoke + dashboard E2E).
+
+## Support this project
+
+If this plugin saves you time, consider [a small donation via PayPal](https://www.paypal.com/donate/?hosted_button_id=JPZRATUUHRT5C).
+It keeps the lights on while I build more HCU plugins.
+
+## Credits and license
+
+Built against the [Homematic IP Connect API 1.0.1](https://github.com/homematicip/connect-api)
+by eQ-3. Uses the official [Home Connect Developer API](https://developer.home-connect.com/)
+under OAuth2 Device Flow. Mapping inspired by [`ioBroker.homeconnect`](https://github.com/bowm0815/ioBroker.homeconnect) (MIT).
+
+Apache-2.0. *Home Connect* is a trademark of BSH Hausgeräte GmbH;
+*Homematic IP* is a trademark of eQ-3 AG. Brand names (Bosch, Siemens,
+Gaggenau, NEFF, Thermador, Constructa) belong to their respective owners.
+This project is not affiliated with or endorsed by either company.
 
 Issued by **Fabio Renner**.
-
-### Third-party components
-
-- Uses the official [BSH Home Connect Developer API](https://developer.home-connect.com/) under OAuth2 Device Flow.
-- Mapping and OAuth flow inspired by [`ioBroker.homeconnect`](https://github.com/bowm0815/ioBroker.homeconnect) (MIT).
-- [`axios`](https://github.com/axios/axios) — HTTP client (MIT). [`eventsource`](https://github.com/EventSource/eventsource) — SSE client (MIT). [`qs`](https://github.com/ljharb/qs) — query-string parser (BSD-3-Clause).
-- Home Connect is a trademark of BSH Hausgeräte GmbH; brand names (Bosch, Siemens, Gaggenau, NEFF, Thermador, Constructa) belong to their respective owners. This plugin is not affiliated with or endorsed by BSH.
-- Built against the [Homematic IP Connect API 1.0.1](https://github.com/homematicip/connect-api) by eQ-3.
-
-## License
-
-Apache-2.0. Home Connect is a trademark of BSH Hausgeräte GmbH; Homematic IP
-is a trademark of eQ-3 AG. This project is not affiliated with either company.
