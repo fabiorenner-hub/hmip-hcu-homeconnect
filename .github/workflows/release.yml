@@ -9,8 +9,22 @@ permissions:
   contents: write
 
 jobs:
-  build-and-release:
+  test:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm test
+
+  build-and-release:
+    needs: test
+    # Native ARM64 runner — the HCU is ARM64. Building natively avoids slow
+    # QEMU emulation that would otherwise take 30+ minutes for `npm install`.
+    runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
 
@@ -21,9 +35,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Run tests
-        run: npm test
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
