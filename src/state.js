@@ -21,8 +21,8 @@ const DEFAULT_CONFIG = {
 	enableEnergy: true,
 	resetSession: false,
 	verboseLogging: false,
-	// OTA updates
-	updateMode: 'manual',            // 'manual' | 'auto'
+	// OTA updates — ON by default on the stable channel.
+	updateMode: 'auto',              // 'manual' | 'auto'
 	updateChannel: 'stable',         // 'stable' | 'experimental'
 	updateCheckIntervalHours: 6,
 	// Opt-in anonymous analytics (default OFF; family ethos = LOCAL/no-telemetry)

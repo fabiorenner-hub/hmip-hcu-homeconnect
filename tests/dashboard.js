@@ -38,12 +38,22 @@ const { Plugin } = require('../src/index');
 	assert.ok(html.includes('data-tab="devices"'));
 	assert.ok(html.includes('data-tab="events"'));
 	assert.ok(html.includes('data-tab="energy"'));
+	assert.ok(html.includes('data-tab="updates"'));
 	assert.ok(html.includes('data-tab="logs"'));
+	assert.ok(html.includes('id="otaInstallBtn"'));
 
 	const state = JSON.parse(await get(`http://127.0.0.1:${PORT}/api/state`));
 	assert.strictEqual(state.pluginId, 'de.kiro.plugin.homeconnect.test');
 	assert.ok(Array.isArray(state.hcuDevices));
 	assert.ok(state.rateLimit);
+	assert.ok(state.ota, 'snapshot includes ota status');
+	assert.strictEqual(state.ota.channel, 'stable');
+	assert.strictEqual(state.ota.mode, 'auto', 'OTA auto is default');
+
+	// otaStatus action works
+	const otaStatus = JSON.parse(await post(`http://127.0.0.1:${PORT}/api/action`, { action: 'otaStatus' }));
+	assert.strictEqual(otaStatus.ok, true);
+	assert.ok(otaStatus.status && otaStatus.status.coreVersion);
 
 	const dl = await get(`http://127.0.0.1:${PORT}/api/state.json`);
 	assert.ok(dl.startsWith('{'));

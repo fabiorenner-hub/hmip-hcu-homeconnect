@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.1] - 2026-07-14
+
+### Added
+- **Updates tab** in the debug dashboard: a step-by-step OTA install UI
+  (Download → Installation → Restart → Done) with a progress bar, "check now" /
+  "update now" buttons, running-vs-latest versions, and a header badge when an
+  update is available.
+
+### Changed
+- **OTA is on by default**: update mode defaults to `auto` on the `stable`
+  channel (was `manual`).
+
+### Fixed
+- OTA install no longer looks broken during the restart. The button stays
+  disabled for the whole install → restart → reconnect cycle; the expected
+  "connection dropped" during restart is shown as progress, not an error. The UI
+  polls until the new version is back up and then reloads automatically —
+  no more "failed to fetch" on a second click.
+
 ## [0.7.0] - 2026-07-14
 
 ### Added

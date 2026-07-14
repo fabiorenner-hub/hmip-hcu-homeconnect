@@ -1,6 +1,6 @@
 {
   "name": "hmip-plugin-homeconnect",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Homematic IP HCU plugin to integrate Home Connect (BSH) household appliances",
   "main": "src/index.js",
   "scripts": {

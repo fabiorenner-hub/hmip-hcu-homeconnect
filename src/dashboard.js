@@ -187,6 +187,7 @@ function renderIndex() {
 	<button data-tab="api">API</button>
 	<button data-tab="events">Events</button>
 	<button data-tab="energy">Energie</button>
+	<button data-tab="updates">Updates</button>
 	<button data-tab="logs">Logs</button>
 	<button data-tab="config">Config</button>
 </nav>
@@ -311,6 +312,35 @@ function renderIndex() {
 		</div>
 	</section>
 
+	<section data-panel="updates" class="panel">
+		<div class="card full">
+			<h2>Over-the-Air Updates</h2>
+			<div class="ota-head">
+				<div class="ota-version">
+					<span class="ota-version__label">Läuft</span>
+					<span class="ota-version__value" id="otaRunning">–</span>
+				</div>
+				<div class="ota-version">
+					<span class="ota-version__label">Neueste</span>
+					<span class="ota-version__value" id="otaLatest">–</span>
+				</div>
+			</div>
+			<div class="kv" id="otaInfo"></div>
+
+			<div class="ota-progress" id="otaProgress" hidden>
+				<div class="ota-steps" id="otaSteps"></div>
+				<div class="bar ota-bar"><div id="otaBar"></div></div>
+				<div class="ota-statusline" id="otaStatusText"></div>
+			</div>
+
+			<div class="actions" id="otaActions">
+				<button id="otaCheckBtn">Jetzt prüfen</button>
+				<button id="otaInstallBtn" class="primary" hidden>Jetzt aktualisieren</button>
+				<span id="otaHint" class="muted"></span>
+			</div>
+		</div>
+	</section>
+
 	<section data-panel="logs" class="panel">
 		<div class="card full">
 			<h2>Logs</h2>
@@ -420,6 +450,32 @@ pre.logs .line.debug { color:var(--muted); }
 .frame-row { cursor:pointer; }
 .frame-row:hover { background:#1f2530; }
 .frame-row.selected { background:#1f2937; }
+
+/* ===== OTA Updates panel ===== */
+button.primary { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
+button.primary:hover { background:#4c9dff; border-color:#4c9dff; }
+button.primary:disabled, button:disabled { opacity:.55; cursor:not-allowed; }
+.ota-head { display:flex; gap:24px; flex-wrap:wrap; margin-bottom:12px; }
+.ota-version { display:flex; flex-direction:column; gap:2px; }
+.ota-version__label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+.ota-version__value { font-size:20px; font-weight:650; font-variant-numeric:tabular-nums; }
+.ota-version__value.new { color:var(--accent); }
+.ota-progress { margin:14px 0; padding:14px; background:#0a0d12; border:1px solid var(--border); border-radius:8px; }
+.ota-steps { display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
+.ota-step { display:flex; align-items:center; gap:8px; flex:1; min-width:120px; font-size:12px; color:var(--muted); }
+.ota-step__dot { width:20px; height:20px; border-radius:50%; border:2px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:11px; flex:0 0 auto; transition:all .25s ease; }
+.ota-step.active { color:var(--fg); }
+.ota-step.active .ota-step__dot { border-color:var(--accent); box-shadow:0 0 0 3px rgba(56,139,253,.25); }
+.ota-step.done { color:var(--ok); }
+.ota-step.done .ota-step__dot { border-color:var(--ok); background:var(--ok); color:#fff; }
+.ota-bar { height:8px; }
+.ota-bar > div { transition: width .4s ease; }
+.ota-bar > div.indeterminate { width:40% !important; animation: ota-slide 1.1s ease-in-out infinite; }
+@keyframes ota-slide { 0% { margin-left:-40%; } 100% { margin-left:100%; } }
+.ota-statusline { margin-top:10px; font-size:13px; }
+.ota-statusline.err { color:var(--err); }
+.ota-statusline.ok { color:var(--ok); }
+.pills .upd { color:var(--accent); border-color:var(--accent); }
 `;
 
 const JS_SCRIPT = String.raw`
@@ -475,15 +531,21 @@ const JS_SCRIPT = String.raw`
 		renderAppliances();
 		renderApiCalls();
 		renderEnergy();
+		renderOta();
 		$('#cfg').textContent = JSON.stringify(snapshot.config, null, 2);
 	}
 
 	function renderHeader() {
+		const ota = snapshot.ota || {};
+		const updPill = (ota.updateAvailable && !ota.requiresCore)
+			? '<span class="upd">Update ' + escape(ota.latestVersion || '') + ' verfügbar</span>'
+			: '';
 		$('#pills').innerHTML =
 			pill('HCU ' + (snapshot.hcuConnected ? 'verbunden' : 'getrennt'), snapshot.hcuConnected) +
 			pill('HC ' + (snapshot.hcAuthenticated ? 'auth' : 'kein Token'), snapshot.hcAuthenticated) +
 			pill('Events ' + ((snapshot.eventStats?.connected) ? 'aktiv' : 'inaktiv'), !!snapshot.eventStats?.connected) +
-			pill('readiness: ' + escape(snapshot.readiness), snapshot.readiness === 'READY');
+			pill('readiness: ' + escape(snapshot.readiness), snapshot.readiness === 'READY') +
+			updPill;
 	}
 
 	function renderOverview() {
@@ -766,6 +828,148 @@ const JS_SCRIPT = String.raw`
 		const r = await fetch('/api/action', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action, args }) });
 		return r.json();
 	}
+
+	// ===== OTA Updates =====
+	let otaBusy = false;
+	const OTA_STEPS = ['Download', 'Installation', 'Neustart', 'Fertig'];
+	const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+	function renderOta() {
+		const ota = (snapshot && snapshot.ota) || {};
+		const running = ota.otaVersion || ota.coreVersion || '–';
+		const runEl = $('#otaRunning'); if (runEl) runEl.textContent = running + (ota.otaActive ? ' (OTA)' : '');
+		const latestEl = $('#otaLatest');
+		if (latestEl) {
+			latestEl.textContent = ota.latestVersion || '–';
+			latestEl.classList.toggle('new', !!(ota.updateAvailable && !ota.requiresCore));
+		}
+		const info = $('#otaInfo');
+		if (info) {
+			info.innerHTML =
+				'<b>Kanal</b><span>' + escape(ota.channel || '–') + '</span>' +
+				'<b>Modus</b><span>' + escape(ota.mode || '–') + '</span>' +
+				'<b>Kern (Image)</b><span>' + escape(ota.coreVersion || '–') + '</span>' +
+				'<b>Aktives OTA</b><span>' + escape(ota.activeVersion || '–') + '</span>' +
+				'<b>Letzte Prüfung</b><span>' + (ota.lastCheckAt ? new Date(ota.lastCheckAt).toLocaleString('de-DE') : '–') + '</span>' +
+				(ota.lastError ? '<b>Letzter Fehler</b><span style="color:var(--err)">' + escape(ota.lastError) + '</span>' : '');
+		}
+		if (otaBusy) return; // don't fight the install stepper
+		const installBtn = $('#otaInstallBtn');
+		const hint = $('#otaHint');
+		if (installBtn) installBtn.hidden = !(ota.updateAvailable && !ota.requiresCore);
+		if (hint) {
+			if (ota.requiresCore) hint.textContent = 'Kern-Update nötig (mind. ' + escape(ota.minCoreVersion || '') + ') – bitte neue .tar.gz über HCUweb installieren.';
+			else if (ota.updateAvailable) hint.textContent = 'Update ' + escape(ota.latestVersion || '') + ' bereit.';
+			else hint.textContent = 'Aktuell – kein Update verfügbar.';
+		}
+	}
+
+	function otaShowProgress(show) { const p = $('#otaProgress'); if (p) p.hidden = !show; }
+	function otaSetSteps(activeIdx, state) {
+		const host = $('#otaSteps'); if (!host) return;
+		host.innerHTML = OTA_STEPS.map((label, i) => {
+			let cls = 'ota-step';
+			if (i < activeIdx) cls += ' done';
+			else if (i === activeIdx) cls += (state === 'error' ? '' : ' active');
+			const mark = i < activeIdx ? '✓' : (i === activeIdx && state === 'error' ? '✕' : (i + 1));
+			return '<div class="' + cls + '"><span class="ota-step__dot">' + mark + '</span>' + label + '</div>';
+		}).join('');
+	}
+	function otaBar(mode, pct) {
+		const bar = $('#otaBar'); if (!bar) return;
+		if (mode === 'indeterminate') { bar.classList.add('indeterminate'); bar.style.width = '40%'; }
+		else { bar.classList.remove('indeterminate'); bar.style.width = (pct || 0) + '%'; }
+		bar.classList.remove('warn', 'err');
+	}
+	function otaStatus(text, cls) {
+		const el = $('#otaStatusText'); if (!el) return;
+		el.className = 'ota-statusline' + (cls ? ' ' + cls : '');
+		el.textContent = text;
+	}
+
+	async function otaWaitForRestart(target) {
+		const deadline = Date.now() + 150000;
+		let sawDown = false;
+		while (Date.now() < deadline) {
+			await sleep(2000);
+			try {
+				const r = await fetch('/api/state', { cache: 'no-store' });
+				if (!r.ok) { sawDown = true; continue; }
+				const st = await r.json();
+				const running = st.ota ? (st.ota.otaVersion || st.ota.coreVersion) : null;
+				if (target && running === target) return otaDone(running);
+				if (!target && sawDown) return otaDone(running);
+				// server still up on old version → restart not done yet
+			} catch (e) {
+				sawDown = true; // connection dropped = restart in progress (expected)
+			}
+		}
+		otaSetSteps(2, 'error');
+		otaStatus('Neustart dauert länger als erwartet. Bitte die Seite in ein paar Sekunden neu laden.', 'err');
+		otaBar('determinate', 100);
+		otaBusy = false;
+	}
+
+	function otaDone(running) {
+		otaSetSteps(4, 'done'); // all done
+		otaBar('determinate', 100);
+		otaStatus('Aktualisiert auf ' + (running || '') + '. Seite wird neu geladen…', 'ok');
+		setTimeout(() => location.reload(), 2200);
+	}
+
+	async function installOta() {
+		if (otaBusy) return;
+		otaBusy = true;
+		const target = (snapshot && snapshot.ota && snapshot.ota.latestVersion) || null;
+		$('#otaInstallBtn').disabled = true;
+		$('#otaCheckBtn').disabled = true;
+		$('#otaHint').textContent = '';
+		otaShowProgress(true);
+		otaSetSteps(0, 'active');
+		otaBar('indeterminate');
+		otaStatus('Lade Update herunter und installiere…');
+		try {
+			const res = await invokeAction('otaInstall');
+			if (res && res.ok === false) {
+				otaSetSteps(1, 'error');
+				otaBar('determinate', 100);
+				otaStatus('Fehlgeschlagen: ' + (res.error || 'unbekannt'), 'err');
+				$('#otaInstallBtn').disabled = false;
+				$('#otaCheckBtn').disabled = false;
+				otaBusy = false;
+				return;
+			}
+			// Server installed and is restarting now.
+			otaSetSteps(2, 'active');
+			otaBar('indeterminate');
+			otaStatus('Neustart läuft… die Verbindung bricht kurz ab, das ist normal.');
+			await otaWaitForRestart(target);
+		} catch (e) {
+			// The install response raced the restart → treat as restarting.
+			otaSetSteps(2, 'active');
+			otaBar('indeterminate');
+			otaStatus('Neustart läuft… die Verbindung bricht kurz ab, das ist normal.');
+			await otaWaitForRestart(target);
+		}
+	}
+
+	// ===== OTA buttons =====
+	const otaCheckBtn = $('#otaCheckBtn');
+	if (otaCheckBtn) otaCheckBtn.addEventListener('click', async () => {
+		otaCheckBtn.disabled = true;
+		const hint = $('#otaHint');
+		if (hint) hint.textContent = 'Prüfe…';
+		try {
+			const res = await invokeAction('otaCheck');
+			if (res && res.status && snapshot) { snapshot.ota = res.status; renderOta(); }
+		} catch (e) {
+			if (hint) hint.textContent = 'Prüfung fehlgeschlagen: ' + e.message;
+		} finally {
+			otaCheckBtn.disabled = false;
+		}
+	});
+	const otaInstallBtn = $('#otaInstallBtn');
+	if (otaInstallBtn) otaInstallBtn.addEventListener('click', installOta);
 
 	// ===== Manual API form =====
 	$('#rawform').addEventListener('submit', async ev => {
