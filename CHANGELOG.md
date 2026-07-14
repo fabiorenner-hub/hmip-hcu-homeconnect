@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.2] - 2026-07-14
+
+### Added
+- **Anonymous usage statistics** (default on, opt-out under *Advanced → Send
+  anonymous usage statistics*). Sends pseudonymous technical metadata
+  (schema, event `start`/`heartbeat`/`update`, a SHA-256 install id, plugin id,
+  plugin/core/OTA version, build id, CPU arch, HCU firmware, language) to
+  `https://hcu.fabiorenner.de/ingest.php`. No PII, no serial/SGTIN, no IPs,
+  rooms, device data, measurements, config or tokens. Fire-and-forget with
+  3 s connect / 5 s total timeout, backoff on failure, ≤4096-byte payload,
+  HTTP 204 handling. The exact payload is viewable via the `analyticsPreview`
+  dashboard action; turn the switch off (or clear the endpoint) to disable.
+
 ## [0.7.1] - 2026-07-14
 
 ### Added

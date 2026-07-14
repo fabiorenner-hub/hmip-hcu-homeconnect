@@ -228,58 +228,71 @@ function sha256(buf) {
 	assert.strictEqual(inst.error, 'already-current');
 
 	/* ---- callHome ---- */
-	const { CallHome } = require('../src/analytics/callHome');
+	const { CallHome, loadInstallId, isHex64 } = require('../src/analytics/callHome');
 	const anDir = tmpdir('analytics');
-	const spy = { calls: 0 };
-	const spyFetch = async () => { spy.calls += 1; return { ok: true, status: 204 }; };
-	const buildPayload = () => ({
-		version: '0.7.0', coreVersion: '0.7.0', channel: 'stable', otaActive: false,
-		locale: 'de-DE', uptimeH: 1, counts: { appliances: 2, devices: 3 },
+	const spy = { calls: 0, lastBody: null, lastHeaders: null };
+	const spyFetch = async (url, init) => { spy.calls += 1; spy.lastBody = init && init.body; spy.lastHeaders = init && init.headers; return { ok: true, status: 204 }; };
+	const buildFields = () => ({
+		coreVersion: '0.7.1', otaVersion: '0.7.1', buildId: '0.7.1', arch: 'arm64', hcuFirmware: '1.4.7', lang: 'de',
 	});
 
 	const disabled = new CallHome({
-		dataDir: anDir, fetchImpl: spyFetch, buildPayload,
+		dataDir: anDir, fetchImpl: spyFetch, buildFields,
 		getConfig: () => ({ enabled: false, endpoint: 'https://c/x', intervalHours: 24 }),
 	});
-	await disabled._send();
-	assert.strictEqual(spy.calls, 0, 'disabled → no send');
+	await disabled.sendEvent('start');
+	assert.strictEqual(spy.calls, 0, 'disabled → no send (opt-out works)');
 
 	const noEndpoint = new CallHome({
-		dataDir: anDir, fetchImpl: spyFetch, buildPayload,
+		dataDir: anDir, fetchImpl: spyFetch, buildFields,
 		getConfig: () => ({ enabled: true, endpoint: '', intervalHours: 24 }),
 	});
-	await noEndpoint._send();
+	await noEndpoint.sendEvent('start');
 	assert.strictEqual(spy.calls, 0, 'no endpoint → no send');
 
 	const httpOnly = new CallHome({
-		dataDir: anDir, fetchImpl: spyFetch, buildPayload,
+		dataDir: anDir, fetchImpl: spyFetch, buildFields,
 		getConfig: () => ({ enabled: true, endpoint: 'http://insecure/x', intervalHours: 24 }),
 	});
-	await httpOnly._send();
+	await httpOnly.sendEvent('start');
 	assert.strictEqual(spy.calls, 0, 'non-https → no send');
 
 	const enabled = new CallHome({
-		dataDir: anDir, fetchImpl: spyFetch, buildPayload,
-		getConfig: () => ({ enabled: true, endpoint: 'https://c/x', intervalHours: 24 }),
+		dataDir: anDir, fetchImpl: spyFetch, buildFields,
+		getConfig: () => ({ enabled: true, endpoint: 'https://c/x', intervalHours: 24, pingSecret: 's3cr3t' }),
 	});
-	await enabled._send();
-	assert.strictEqual(spy.calls, 1, 'enabled + https → send');
+	const sent = await enabled.sendEvent('start');
+	assert.strictEqual(sent, true, 'enabled + https → send');
+	assert.strictEqual(spy.calls, 1);
+	assert.strictEqual(spy.lastHeaders['X-HPA-Ping-Secret'], 's3cr3t', 'ping secret header sent when configured');
 
-	// payload contains NO forbidden fields
-	const payload = await enabled.preview();
+	// payload shape (schema-1) + NO forbidden fields
+	const payload = await enabled.preview('start');
+	assert.strictEqual(payload.schema, 1);
+	assert.strictEqual(payload.event, 'start');
+	assert.ok(isHex64(payload.installId), 'installId is 64 lowercase hex');
+	assert.ok(payload.pluginId && payload.coreVersion && payload.otaVersion);
 	const json = JSON.stringify(payload).toLowerCase();
-	for (const forbidden of ['token', 'access_token', 'refresh_token', 'address', 'lat', 'lon', 'clientid', 'haid']) {
+	for (const forbidden of ['token', 'refresh', 'address', 'sgtin', 'serial', 'room', 'clientid', 'haid', 'lat', 'lon']) {
 		assert.ok(!json.includes(forbidden), `payload must not contain "${forbidden}"`);
 	}
-	assert.ok(/^[0-9a-f-]{8,}$/i.test(payload.installId), 'installId looks anonymous');
+	assert.ok(Buffer.byteLength(JSON.stringify(payload), 'utf8') <= 4096, 'payload within 4096 bytes');
 
-	// installId stable across "restarts"
+	// installId stable across "restarts" and matches sha256(salt+seed) format
 	const again = new CallHome({
-		dataDir: anDir, fetchImpl: spyFetch, buildPayload,
+		dataDir: anDir, fetchImpl: spyFetch, buildFields,
 		getConfig: () => ({ enabled: false, intervalHours: 24 }),
 	});
-	const p2 = await again.preview();
+	const p2 = await again.preview('heartbeat');
 	assert.strictEqual(p2.installId, payload.installId, 'installId stable across restarts');
+	assert.strictEqual(p2.event, 'heartbeat');
+
+	// installId derived from an SGTIN never leaks the SGTIN and is deterministic
+	const idA = await loadInstallId(tmpdir('sg'), 'HCU-SGTIN-123');
+	const idB = await loadInstallId(tmpdir('sg2'), 'HCU-SGTIN-123');
+	assert.ok(isHex64(idA), 'sgtin-derived id is 64 hex');
+	assert.strictEqual(idA, idB, 'same sgtin → same id across installs');
+	assert.ok(!idA.includes('HCU-SGTIN'), 'raw sgtin never present in id');
 
 	console.log('OTA + ANALYTICS TESTS OK');
 	process.exit(0);

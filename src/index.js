@@ -93,15 +93,16 @@ class Plugin {
 			requestRestart: () => this._requestRestart(),
 		});
 
-		// Opt-in anonymous analytics (default off).
+		// Anonymous usage statistics (default on, opt-out via config).
 		this.analytics = new CallHome({
 			dataDir: process.env.PLUGIN_STATE_DIR || './data',
 			getConfig: () => ({
 				enabled: this.state.config.analyticsEnabled,
 				endpoint: this.state.config.analyticsEndpoint || undefined,
 				intervalHours: this.state.config.analyticsIntervalHours,
+				pingSecret: this.state.config.analyticsPingSecret || undefined,
 			}),
-			buildPayload: () => this._buildAnalyticsPayload(),
+			buildFields: () => this._buildAnalyticsFields(),
 			logger: (lvl, msg) => this.logger[lvl === 'warn' ? 'warn' : 'info'](msg),
 		});
 
@@ -152,28 +153,18 @@ class Plugin {
 	}
 
 	/**
-	 * Aggregated, non-identifying analytics payload. NO PII, no tokens, no
-	 * device names, no coordinates — only coarse counts and versions.
+	 * Technical fields for the schema-1 analytics payload. Only pseudonymous
+	 * version/platform metadata — NO PII, no SGTIN, no device data.
 	 */
-	_buildAnalyticsPayload() {
-		const appliances = this.state.data.discoveredAppliances || {};
-		const types = {};
-		for (const info of Object.values(appliances)) {
-			const type = info && typeof info.type === 'string' ? info.type : 'unknown';
-			types[type] = (types[type] || 0) + 1;
-		}
+	_buildAnalyticsFields() {
+		const otaVersion = this.ota.otaVersion();
 		return {
-			version: this.coreVersion,
 			coreVersion: this.coreVersion,
-			channel: this.state.config.updateChannel,
-			otaActive: this.ota.otaActive(),
-			locale: this.state.config.language || 'de-DE',
-			uptimeH: Math.round((Date.now() - this.startedAt) / 3_600_000 * 10) / 10,
-			counts: {
-				appliances: Object.keys(appliances).length,
-				devices: this.hcuDevices.size,
-				...types,
-			},
+			otaVersion,
+			buildId: otaVersion, // includes the +exp build tail on experimental payloads
+			arch: process.arch,
+			hcuFirmware: this.hcuFirmware || undefined,
+			lang: (this.state.config.language || 'de-DE').slice(0, 2),
 		};
 	}
 

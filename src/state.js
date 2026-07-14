@@ -25,10 +25,12 @@ const DEFAULT_CONFIG = {
 	updateMode: 'auto',              // 'manual' | 'auto'
 	updateChannel: 'stable',         // 'stable' | 'experimental'
 	updateCheckIntervalHours: 6,
-	// Opt-in anonymous analytics (default OFF; family ethos = LOCAL/no-telemetry)
-	analyticsEnabled: false,
-	analyticsEndpoint: '',
+	// Anonymous usage statistics (default ON, opt-out via the switch below).
+	// Only pseudonymous technical metadata — no PII, no SGTIN, no device data.
+	analyticsEnabled: true,
+	analyticsEndpoint: 'https://hcu.fabiorenner.de/ingest.php',
 	analyticsIntervalHours: 24,
+	analyticsPingSecret: '',
 };
 
 class StateStore {
