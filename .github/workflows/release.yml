@@ -39,13 +39,15 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build HCU plugin image tarball
-        run: npm run package
-
+      # Build the OTA payload first: `npm run build` wipes dist/, so it must run
+      # before `npm run package` writes the image tarball into dist/.
       - name: Build stable OTA payload
         run: |
           npm run build
           npm run build:ota
+
+      - name: Build HCU plugin image tarball
+        run: npm run package
 
       - name: Upload HCU plugin tarball + OTA payload to release
         uses: softprops/action-gh-release@v2
