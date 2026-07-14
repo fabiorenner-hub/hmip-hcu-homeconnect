@@ -73,8 +73,35 @@ class CallHome {
 	}
 
 	_fetch(url, init) {
-		const f = this.deps.fetchImpl || ((u, i) => globalThis.fetch(u, i));
-		return f(url, init);
+		if (this.deps.fetchImpl) return this.deps.fetchImpl(url, init);
+		if (typeof globalThis.fetch === 'function') return globalThis.fetch(url, init);
+		// Older runtimes without a global fetch: fall back to node:https.
+		return this._httpsPost(url, init);
+	}
+
+	_httpsPost(url, init) {
+		return new Promise((resolve, reject) => {
+			let u;
+			try { u = new URL(url); } catch (e) { return reject(e); }
+			const https = require('node:https');
+			const body = init && init.body ? Buffer.from(init.body) : null;
+			const headers = { ...(init && init.headers) };
+			if (body && !headers['Content-Length']) headers['Content-Length'] = String(body.length);
+			const req = https.request({
+				hostname: u.hostname,
+				port: u.port || 443,
+				path: u.pathname + u.search,
+				method: (init && init.method) || 'POST',
+				headers,
+			}, res => {
+				res.resume(); // drain the body, we only care about the status code
+				res.on('end', () => resolve({ status: res.statusCode, ok: res.statusCode >= 200 && res.statusCode < 300 }));
+			});
+			req.on('error', reject);
+			req.setTimeout(TOTAL_TIMEOUT_MS, () => req.destroy(new Error('timeout')));
+			if (body) req.write(body);
+			req.end();
+		});
 	}
 
 	_log(lvl, msg) {
@@ -129,6 +156,21 @@ class CallHome {
 
 	preview(event = 'start') { return this.buildPayload(event); }
 
+	/** Local telemetry status for the debug dashboard (no endpoint / no PII). */
+	async status() {
+		const st = await this._readState();
+		const cfg = this.deps.getConfig();
+		return {
+			enabled: !!cfg.enabled,
+			lastAttempt: st.lastTelemetryAttempt || null,
+			lastSuccess: st.lastTelemetrySuccess || null,
+			lastEvent: st.lastTelemetryEvent || null,
+			lastStatus: st.lastTelemetryStatus ?? null,
+			lastError: st.lastTelemetryError || null,
+			lastHeartbeatAt: st.lastHeartbeatAt || null,
+		};
+	}
+
 	_serialize(payload) {
 		let body = JSON.stringify(payload);
 		if (Buffer.byteLength(body, 'utf8') <= MAX_BYTES) return body;
@@ -143,10 +185,11 @@ class CallHome {
 		return body.length <= MAX_BYTES ? body : null;
 	}
 
-	async sendEvent(event) {
+	async sendEvent(event, { force = false } = {}) {
 		const cfg = this.deps.getConfig();
 		if (!cfg.enabled || !cfg.endpoint || !cfg.endpoint.startsWith('https://')) return false;
-		if (Date.now() < this._nextAllowedAt) return false; // respect backoff
+		if (!force && Date.now() < this._nextAllowedAt) return false; // respect backoff
+		if (force) { this._failures = 0; this._nextAllowedAt = 0; }
 
 		let body;
 		try {
@@ -177,19 +220,22 @@ class CallHome {
 				this._failures = 0;
 				this._nextAllowedAt = 0;
 				const now = new Date().toISOString();
-				const patch = { lastTelemetrySuccess: now };
+				const patch = { lastTelemetrySuccess: now, lastTelemetryStatus: res.status, lastTelemetryError: null };
 				if (event === 'heartbeat') patch.lastHeartbeatAt = now;
 				await this._writeState(patch);
 				this._log('info', `${event} ok (${res.status})`);
 				return true;
 			}
 			this._handleFailure(res.status);
+			await this._writeState({ lastTelemetryStatus: res.status, lastTelemetryError: `HTTP ${res.status}` });
 			this._log('info', `${event} rejected (${res.status})`);
 			return false;
 		} catch (e) {
 			if (timer) clearTimeout(timer);
 			this._handleFailure(0); // network / abort → retryable
-			this._log('info', `${event} failed: ${e && e.message ? e.message : 'error'}`);
+			const emsg = e && e.message ? e.message : 'error';
+			await this._writeState({ lastTelemetryStatus: 0, lastTelemetryError: emsg });
+			this._log('info', `${event} failed: ${emsg}`);
 			return false;
 		}
 	}
@@ -242,7 +288,7 @@ class CallHome {
 	start() {
 		if (this.timer) return;
 		// Send `start` shortly after boot (fire-and-forget, never blocks).
-		this.bootTimer = setTimeout(() => { this.onBoot().catch(() => undefined); }, 60_000);
+		this.bootTimer = setTimeout(() => { this.onBoot().catch(() => undefined); }, 15_000);
 		// Periodically consider a heartbeat (at most once per configured interval).
 		this.timer = setInterval(() => { this._maybeHeartbeat().catch(() => undefined); }, HEARTBEAT_CHECK_MS);
 	}

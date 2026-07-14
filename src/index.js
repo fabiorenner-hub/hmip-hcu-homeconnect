@@ -807,6 +807,13 @@ class Plugin {
 			case 'analyticsPreview': {
 				return { ok: true, payload: await this.analytics.preview() };
 			}
+			case 'analyticsStatus': {
+				return { ok: true, status: await this.analytics.status() };
+			}
+			case 'analyticsPing': {
+				const sent = await this.analytics.sendEvent('start', { force: true });
+				return { ok: true, sent, status: await this.analytics.status() };
+			}
 			case 'refreshToken': {
 				await this.auth.refresh();
 				return { ok: true };

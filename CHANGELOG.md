@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.6] - 2026-07-14
+
+### Changed
+- More robust background network calls: added a fallback for runtimes without a
+  global `fetch`, and extra diagnostics actions in the debug dashboard.
+
 ## [0.7.5] - 2026-07-14
 
 ### Added

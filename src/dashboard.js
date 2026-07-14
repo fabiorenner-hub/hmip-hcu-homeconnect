@@ -224,6 +224,7 @@ function renderIndex() {
 				<button data-action="refreshAppliances">Appliances neu laden</button>
 				<button data-action="restartEventStream">Eventstream neu starten</button>
 				<button data-action="sendTestUserMessage">Test-Nachricht an HCU App</button>
+				<button data-action="analyticsPing">Nutzungsstatistik jetzt senden</button>
 				<button data-action="resetSession" class="danger">Login zurücksetzen</button>
 				<a id="dlState" href="/api/state.json" download>State.json downloaden</a>
 			</div>

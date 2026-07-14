@@ -276,6 +276,12 @@ function sha256(buf) {
 	assert.strictEqual(await rejecter.sendEvent('start'), false, '400 → not sent');
 	assert.ok(rejecter._nextAllowedAt - Date.now() > 12 * 3600 * 1000, '400 sets a long (>12h) cooldown');
 	assert.strictEqual(await rejecter.sendEvent('start'), false, '400 → blocked by cooldown, no fast retry');
+	// force bypasses the cooldown (used by the manual "send now" dashboard button)
+	status400 = 204;
+	assert.strictEqual(await rejecter.sendEvent('start', { force: true }), true, 'force bypasses backoff');
+	const anStatus = await rejecter.status();
+	assert.strictEqual(anStatus.lastStatus, 204, 'status() reports the last HTTP status');
+	assert.strictEqual(anStatus.enabled, true, 'status() reports enabled');
 
 	// payload shape (schema-1) + NO forbidden fields
 	const payload = await enabled.preview('start');
