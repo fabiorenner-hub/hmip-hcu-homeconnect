@@ -169,14 +169,14 @@ function renderIndex() {
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<title>HMIP HomeConnect Plugin · Debug</title>
+<title>HmIP HomeConnect Plugin · Debug</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>${CSS}</style>
 </head>
 <body>
 <header>
 	<div class="brand">
-		<h1>HMIP HomeConnect <span class="muted">Plugin Debug</span></h1>
+		<h1>HmIP HomeConnect <span class="muted">Plugin Debug</span></h1>
 	</div>
 	<div class="pills" id="pills"></div>
 </header>

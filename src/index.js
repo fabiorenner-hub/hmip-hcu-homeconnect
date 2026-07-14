@@ -124,6 +124,7 @@ class Plugin {
 
 	async start() {
 		this.logger.info(`Starting plugin ${this.pluginId} â†’ HCU ${this.host}`);
+		this._applyUpdateChannelReset();
 		this._startDashboardIfEnabled();
 		this._updateSetupServer();
 
@@ -150,6 +151,26 @@ class Plugin {
 	_requestRestart() {
 		this.logger.warn('OTA install complete — restarting to apply the new payload');
 		setTimeout(() => process.exit(0), 500).unref();
+	}
+
+	/**
+	 * Update channel and mode stay user-selectable, but on every version change
+	 * (a fresh image or an installed OTA payload) we return them to the safe
+	 * defaults: channel `stable`, mode `auto`. This pulls experimental testers
+	 * back onto the vetted channel after an update instead of leaving them on a
+	 * prerelease track forever.
+	 */
+	_applyUpdateChannelReset() {
+		const current = this.ota.otaActive() ? this.ota.otaVersion() : this.coreVersion;
+		const prev = this.state.lastRunVersion;
+		if (prev && prev !== current
+			&& (this.state.config.updateChannel !== 'stable' || this.state.config.updateMode !== 'auto')) {
+			this.state.config = { ...this.state.config, updateChannel: 'stable', updateMode: 'auto' };
+			this.logger.info(`Update detected (${prev} -> ${current}); reset update channel to stable, mode to auto`);
+		}
+		if (prev !== current) {
+			this.state.lastRunVersion = current;
+		}
 	}
 
 	/**

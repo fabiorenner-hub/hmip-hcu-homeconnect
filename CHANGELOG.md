@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.4] - 2026-07-14
+
+### Changed
+- The top-left name is now **HmIP HomeConnect** (debug dashboard and setup wizard).
+- Update **channel** (stable / experimental) and **mode** (manual / auto) stay
+  selectable under *Advanced*. After any update the plugin returns to the safe
+  defaults — channel `stable`, mode `auto` — so testers roll back onto the
+  vetted channel automatically.
+
+### Added
+- Stable release now also ships an **over-the-air (OTA) payload**, so HCUs on an
+  older 0.7.x image update to this version without a new HCUweb upload.
+
 ## [0.7.3] - 2026-07-14
 
 ### Changed

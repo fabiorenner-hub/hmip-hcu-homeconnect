@@ -180,7 +180,7 @@ const { buildDevices, controlRequestToAction, applianceUpdateToFeatures, POWER_K
 	await new Promise(r => setTimeout(r, 300));
 
 	const html = await httpGet('http://127.0.0.1:18123/');
-	assert.ok(html.includes('HMIP HomeConnect Plugin'), 'dashboard should serve HTML');
+	assert.ok(html.includes('HmIP HomeConnect Plugin'), 'dashboard should serve HTML');
 	const stateJson = JSON.parse(await httpGet('http://127.0.0.1:18123/api/state'));
 	assert.strictEqual(stateJson.pluginId, 'de.kiro.plugin.homeconnect.test');
 	assert.ok(Array.isArray(stateJson.hcuDevices));

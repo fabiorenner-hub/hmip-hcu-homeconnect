@@ -11,7 +11,7 @@ module.exports = function renderHtml() {
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Home Connect Plugin – Setup</title>
+<title>HmIP HomeConnect – Setup</title>
 <link rel="stylesheet" href="/style.css" />
 <link rel="icon" href="/icon.svg" type="image/svg+xml" />
 </head>
@@ -20,7 +20,7 @@ module.exports = function renderHtml() {
 <header class="topbar">
   <a href="https://github.com/fabiorenner-hub/hmip-hcu-homeconnect" target="_blank" rel="noopener" class="brand">
     <img src="/icon.svg" alt="" width="32" height="32"/>
-    <span>Home Connect Plugin</span>
+    <span>HmIP HomeConnect</span>
   </a>
   <nav class="lang">
     <button data-lang="de" type="button">DE</button>

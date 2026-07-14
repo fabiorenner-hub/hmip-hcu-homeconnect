@@ -33,7 +33,7 @@ const { Plugin } = require('../src/index');
 
 	// Hit every HTTP endpoint
 	const html = await get(`http://127.0.0.1:${PORT}/`);
-	assert.ok(html.includes('HMIP HomeConnect'));
+	assert.ok(html.includes('HmIP HomeConnect'));
 	assert.ok(html.includes('data-tab="overview"'));
 	assert.ok(html.includes('data-tab="devices"'));
 	assert.ok(html.includes('data-tab="events"'));

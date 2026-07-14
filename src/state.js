@@ -44,6 +44,7 @@ class StateStore {
 			lastVerificationStatus: null, // { state: 'pending'|'ok'|'error', message, at }
 			discoveredAppliances: {}, // haId -> { type, name, enumber, vib, brand, connected }
 			energyCounters: {}, // haId -> kWh accumulated
+			lastRunVersion: null, // version seen on the previous boot (update detection)
 		};
 		this._dirty = false;
 		this._saveTimer = null;
@@ -62,6 +63,7 @@ class StateStore {
 				// showing them confuses the user.
 				this.data.discoveredAppliances = parsed.discoveredAppliances || {};
 				this.data.energyCounters = parsed.energyCounters || {};
+				this.data.lastRunVersion = parsed.lastRunVersion || null;
 				this.logger.info('State loaded from', this.file);
 			} else {
 				this.logger.info('No state file found, using defaults');
@@ -103,6 +105,9 @@ class StateStore {
 
 	get session() { return this.data.session; }
 	set session(value) { this.data.session = value; this.scheduleSave(); }
+
+	get lastRunVersion() { return this.data.lastRunVersion; }
+	set lastRunVersion(value) { this.data.lastRunVersion = value; this.scheduleSave(); }
 
 	get lastVerificationUrl() { return this.data.lastVerificationUrl; }
 	set lastVerificationUrl(value) { this.data.lastVerificationUrl = value; }
