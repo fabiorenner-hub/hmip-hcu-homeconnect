@@ -23,8 +23,10 @@ const MAX_BYTES = 4096;
 const CONNECT_TIMEOUT_MS = 3000;
 const TOTAL_TIMEOUT_MS = 5000;
 const HEARTBEAT_CHECK_MS = 60 * 60 * 1000; // check hourly, send at most once/interval
-// Backoff after a failed send: 15 min, then 4 h, then 12 h (no fast retry).
+// Backoff after a failed send (network / HTTP 500): 15 min, then 4 h, then 12 h.
 const BACKOFF_MS = [15 * 60 * 1000, 4 * 3600 * 1000, 12 * 3600 * 1000];
+// HTTP 400 means the payload is (probably) invalid: do NOT fast-retry, wait ~24h.
+const REJECT_COOLDOWN_MS = 24 * 3600 * 1000;
 
 // Salt so the install id is not a bare hash of a guessable seed. Not a secret.
 const INSTALL_ID_SALT = 'de.fr.renner.hcu-plugin-analytics.v1';
@@ -153,7 +155,10 @@ class CallHome {
 		if (!body) return false;
 
 		const headers = { 'Content-Type': 'application/json' };
-		if (cfg.pingSecret) headers['X-HPA-Ping-Secret'] = cfg.pingSecret;
+		if (cfg.pingSecret) {
+			headers['X-HPA-Ping-Secret'] = cfg.pingSecret;
+			headers['X-HS-Ping-Secret'] = cfg.pingSecret; // accepted legacy header name
+		}
 
 		const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
 		const timer = controller ? setTimeout(() => controller.abort(), TOTAL_TIMEOUT_MS) : null;
@@ -171,22 +176,34 @@ class CallHome {
 			if (res.status === 204 || (res.status >= 200 && res.status < 300)) {
 				this._failures = 0;
 				this._nextAllowedAt = 0;
-				await this._writeState({ lastTelemetrySuccess: new Date().toISOString() });
+				const now = new Date().toISOString();
+				const patch = { lastTelemetrySuccess: now };
+				if (event === 'heartbeat') patch.lastHeartbeatAt = now;
+				await this._writeState(patch);
 				this._log('info', `${event} ok (${res.status})`);
 				return true;
 			}
-			this._backoff();
+			this._handleFailure(res.status);
 			this._log('info', `${event} rejected (${res.status})`);
 			return false;
 		} catch (e) {
 			if (timer) clearTimeout(timer);
-			this._backoff();
+			this._handleFailure(0); // network / abort → retryable
 			this._log('info', `${event} failed: ${e && e.message ? e.message : 'error'}`);
 			return false;
 		}
 	}
 
-	_backoff() {
+	/**
+	 * Schedule the next allowed send after a failure.
+	 * HTTP 400 (bad request) → payload likely invalid, long cooldown, no retry ladder.
+	 * HTTP 500 / network error → progressive backoff (15 min → 4 h → 12 h).
+	 */
+	_handleFailure(status) {
+		if (status === 400) {
+			this._nextAllowedAt = Date.now() + REJECT_COOLDOWN_MS;
+			return;
+		}
 		const idx = Math.min(this._failures, BACKOFF_MS.length - 1);
 		this._nextAllowedAt = Date.now() + BACKOFF_MS[idx];
 		this._failures += 1;
@@ -214,9 +231,10 @@ class CallHome {
 		const cfg = this.deps.getConfig();
 		if (!cfg.enabled) return;
 		const st = await this._readState();
+		// At most one heartbeat per configured interval (spec: max once/24h).
 		const intervalMs = Math.max(1, cfg.intervalHours || 24) * 3600 * 1000;
-		const last = st.lastTelemetrySuccess ? Date.parse(st.lastTelemetrySuccess) : 0;
-		if (!last || Date.now() - last >= intervalMs) {
+		const lastHb = st.lastHeartbeatAt ? Date.parse(st.lastHeartbeatAt) : 0;
+		if (!lastHb || Date.now() - lastHb >= intervalMs) {
 			await this.sendEvent('heartbeat');
 		}
 	}

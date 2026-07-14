@@ -266,6 +266,17 @@ function sha256(buf) {
 	assert.strictEqual(spy.calls, 1);
 	assert.strictEqual(spy.lastHeaders['X-HPA-Ping-Secret'], 's3cr3t', 'ping secret header sent when configured');
 
+	// HTTP 400 → long cooldown, no fast retry (payload likely invalid)
+	let status400 = 400;
+	const rejectFetch = async () => ({ ok: false, status: status400 });
+	const rejecter = new CallHome({
+		dataDir: tmpdir('an-reject'), fetchImpl: rejectFetch, buildFields,
+		getConfig: () => ({ enabled: true, endpoint: 'https://c/x', intervalHours: 24 }),
+	});
+	assert.strictEqual(await rejecter.sendEvent('start'), false, '400 → not sent');
+	assert.ok(rejecter._nextAllowedAt - Date.now() > 12 * 3600 * 1000, '400 sets a long (>12h) cooldown');
+	assert.strictEqual(await rejecter.sendEvent('start'), false, '400 → blocked by cooldown, no fast retry');
+
 	// payload shape (schema-1) + NO forbidden fields
 	const payload = await enabled.preview('start');
 	assert.strictEqual(payload.schema, 1);

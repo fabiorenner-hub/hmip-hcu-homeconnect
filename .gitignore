@@ -14,3 +14,6 @@ coverage/
 # Locally built tar.gz at repo root
 hmip-hcu-homeconnect-*.tar.gz
 
+# Private analytics server implementation — never publish to the public repo
+server/
+

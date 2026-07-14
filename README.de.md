@@ -151,9 +151,8 @@ einen neueren Core brauchen, kommen weiterhin als `.tar.gz` über HCUweb.
 
 Damit ersichtlich ist, wie viele Installationen es gibt und welche
 Versionen/Firmware im Umlauf sind, sendet das Plugin eine **anonyme
-Nutzungsstatistik** an `https://hcu.fabiorenner.de/ingest.php`. Das ist
-**standardmäßig aktiv** und lässt sich jederzeit unter *Erweitert → Anonyme
-Nutzungsstatistik senden* **abschalten** (Opt-out).
+Nutzungsstatistik**. Das ist **standardmäßig aktiv** und lässt sich jederzeit
+unter *Erweitert → Anonyme Nutzungsstatistik senden* **abschalten** (Opt-out).
 
 Übertragen werden nur pseudonyme technische Metadaten: Schema-Version, Event
 (`start` / `heartbeat` / `update`), eine anonyme Install-ID, Plugin-ID,
@@ -165,8 +164,8 @@ Niemals gesendet werden Namen, Seriennummern, IP-Adressen, E-Mail, Standort,
 Räume, Gerätenamen/-adressen, Messwerte, Automationen, Zeitpläne,
 Konfigurationsinhalte oder Tokens. Der genaue Payload ist über die
 `analyticsPreview`-Aktion im Debug-Dashboard einsehbar. Der Versand erfolgt
-„fire and forget" mit kurzen Timeouts und blockiert das Plugin nie. Endpoint
-leeren oder Schalter ausschalten deaktiviert alles.
+„fire and forget" mit kurzen Timeouts und blockiert das Plugin nie. Zum
+Deaktivieren einfach den Schalter ausschalten.
 
 ## Fehlerbehebung
 

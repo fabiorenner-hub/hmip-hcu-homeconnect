@@ -66,9 +66,7 @@ const I18N = {
 		updIntervalName: 'Update-Prüfintervall (Stunden)',
 		updIntervalDesc: 'Wie oft im Hintergrund nach neuen Versionen gesucht wird.',
 		anEnabledName: 'Anonyme Nutzungsstatistik senden',
-		anEnabledDesc: 'Standardmäßig AN (Opt-out). Sendet pseudonyme technische Metadaten (Plugin-/Core-/OTA-Version, Architektur, HCU-Firmware, Sprache, anonyme Install-ID) an das HCU-Plugin-Analytics-System. KEINE Namen, Seriennummern, Tokens, Orte, Räume, Geräte oder Messwerte. Zum Deaktivieren diesen Schalter ausschalten.',
-		anEndpointName: 'Analytics-Endpoint (https)',
-		anEndpointDesc: 'HTTPS-Endpoint, an den die Statistik gesendet wird. Leer = es wird nichts gesendet.',
+		anEnabledDesc: 'Standardmäßig AN (Opt-out). Sendet ausschließlich pseudonyme technische Metadaten (Plugin-/Core-/OTA-Version, Architektur, HCU-Firmware, Sprache, anonyme Install-ID). KEINE Namen, Seriennummern, Tokens, Orte, Räume, Geräte, Messwerte oder Konfigurationen. Zum Deaktivieren diesen Schalter ausschalten.',
 		anIntervalName: 'Heartbeat-Intervall (Stunden)',
 		anIntervalDesc: 'Wie oft ein Heartbeat gesendet wird (zusätzlich zu Start- und Update-Events).',
 
@@ -129,9 +127,7 @@ const I18N = {
 		updIntervalName: 'Update check interval (hours)',
 		updIntervalDesc: 'How often to check for new versions in the background.',
 		anEnabledName: 'Send anonymous usage statistics',
-		anEnabledDesc: 'ON by default (opt-out). Sends pseudonymous technical metadata (plugin/core/OTA version, architecture, HCU firmware, language, anonymous install id) to the HCU Plugin Analytics system. NO names, serial numbers, tokens, locations, rooms, devices or measurements. Turn this switch off to disable.',
-		anEndpointName: 'Analytics endpoint (https)',
-		anEndpointDesc: 'HTTPS endpoint that receives the statistics. Empty = nothing is sent.',
+		anEnabledDesc: 'ON by default (opt-out). Sends only pseudonymous technical metadata (plugin/core/OTA version, architecture, HCU firmware, language, anonymous install id). NO names, serial numbers, tokens, locations, rooms, devices, measurements or configuration. Turn this switch off to disable.',
 		anIntervalName: 'Heartbeat interval (hours)',
 		anIntervalDesc: 'How often a heartbeat is sent (in addition to start and update events).',
 
@@ -334,15 +330,6 @@ function buildConfigTemplate(state, languageCode) {
 			order: 9,
 			currentValue: String(cfg.analyticsEnabled),
 			defaultValue: String(DEFAULT_CONFIG.analyticsEnabled),
-		},
-		analyticsEndpoint: {
-			friendlyName: t.anEndpointName,
-			description: t.anEndpointDesc,
-			dataType: 'STRING',
-			groupId: 'advanced',
-			order: 10,
-			currentValue: cfg.analyticsEndpoint || DEFAULT_CONFIG.analyticsEndpoint,
-			defaultValue: DEFAULT_CONFIG.analyticsEndpoint,
 		},
 		analyticsIntervalHours: {
 			friendlyName: t.anIntervalName,

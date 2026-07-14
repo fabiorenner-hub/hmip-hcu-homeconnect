@@ -147,10 +147,9 @@ Major upgrades that need a newer core still ship as a `.tar.gz` via HCUweb.
 ## Anonymous usage statistics
 
 To understand how many installs exist and which versions/firmware are in the
-field, the plugin sends **anonymous usage statistics** to
-`https://hcu.fabiorenner.de/ingest.php`. This is **on by default** and can be
-**turned off** any time via *Advanced → Send anonymous usage statistics*
-(opt-out).
+field, the plugin sends **anonymous usage statistics**. This is **on by
+default** and can be **turned off** any time via *Advanced → Send anonymous
+usage statistics* (opt-out).
 
 It transmits only pseudonymous technical metadata: schema version, event
 (`start` / `heartbeat` / `update`), an anonymous install id, plugin id,
@@ -162,7 +161,7 @@ It never sends names, serial numbers, IP addresses, e-mail, location, rooms,
 device names/addresses, measurements, automations, schedules, configuration or
 tokens. The exact payload is viewable via the `analyticsPreview` action on the
 debug dashboard. Sending is fire-and-forget with short timeouts and never blocks
-the plugin. Set the endpoint empty or turn the switch off to disable.
+the plugin. Turn the switch off to disable.
 
 ## Troubleshooting
 
