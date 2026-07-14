@@ -147,26 +147,6 @@ gestellt und das Plugin fällt automatisch aufs Image zurück. Ein neueres
 Core-Image gewinnt immer gegen ein älteres OTA-Payload. Große Upgrades, die
 einen neueren Core brauchen, kommen weiterhin als `.tar.gz` über HCUweb.
 
-## Anonyme Nutzungsstatistik
-
-Damit ersichtlich ist, wie viele Installationen es gibt und welche
-Versionen/Firmware im Umlauf sind, sendet das Plugin eine **anonyme
-Nutzungsstatistik**. Das ist **standardmäßig aktiv** und lässt sich jederzeit
-unter *Erweitert → Anonyme Nutzungsstatistik senden* **abschalten** (Opt-out).
-
-Übertragen werden nur pseudonyme technische Metadaten: Schema-Version, Event
-(`start` / `heartbeat` / `update`), eine anonyme Install-ID, Plugin-ID,
-Plugin-/Core-/OTA-Version, Build-ID, CPU-Architektur, HCU-Firmware und die
-2-Buchstaben-Sprache. Die Install-ID ist ein SHA-256-Hash (64 Hex-Zeichen) —
-die HCU-Seriennummer/SGTIN wird **nie** übertragen.
-
-Niemals gesendet werden Namen, Seriennummern, IP-Adressen, E-Mail, Standort,
-Räume, Gerätenamen/-adressen, Messwerte, Automationen, Zeitpläne,
-Konfigurationsinhalte oder Tokens. Der genaue Payload ist über die
-`analyticsPreview`-Aktion im Debug-Dashboard einsehbar. Der Versand erfolgt
-„fire and forget" mit kurzen Timeouts und blockiert das Plugin nie. Zum
-Deaktivieren einfach den Schalter ausschalten.
-
 ## Fehlerbehebung
 
 | Symptom | Wahrscheinliche Ursache | Lösung |

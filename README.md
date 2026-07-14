@@ -144,25 +144,6 @@ fails to start three times it is quarantined and the plugin rolls back to the
 image automatically. A stable core image always wins over an older OTA payload.
 Major upgrades that need a newer core still ship as a `.tar.gz` via HCUweb.
 
-## Anonymous usage statistics
-
-To understand how many installs exist and which versions/firmware are in the
-field, the plugin sends **anonymous usage statistics**. This is **on by
-default** and can be **turned off** any time via *Advanced → Send anonymous
-usage statistics* (opt-out).
-
-It transmits only pseudonymous technical metadata: schema version, event
-(`start` / `heartbeat` / `update`), an anonymous install id, plugin id,
-plugin/core/OTA version, build id, CPU architecture, HCU firmware and the
-2-letter language. The install id is a SHA-256 hash (64 hex chars) — the HCU
-serial/SGTIN is **never** transmitted.
-
-It never sends names, serial numbers, IP addresses, e-mail, location, rooms,
-device names/addresses, measurements, automations, schedules, configuration or
-tokens. The exact payload is viewable via the `analyticsPreview` action on the
-debug dashboard. Sending is fire-and-forget with short timeouts and never blocks
-the plugin. Turn the switch off to disable.
-
 ## Troubleshooting
 
 | Symptom | Likely cause | Fix |
