@@ -21,6 +21,14 @@ const DEFAULT_CONFIG = {
 	enableEnergy: true,
 	resetSession: false,
 	verboseLogging: false,
+	// OTA updates
+	updateMode: 'manual',            // 'manual' | 'auto'
+	updateChannel: 'stable',         // 'stable' | 'experimental'
+	updateCheckIntervalHours: 6,
+	// Opt-in anonymous analytics (default OFF; family ethos = LOCAL/no-telemetry)
+	analyticsEnabled: false,
+	analyticsEndpoint: '',
+	analyticsIntervalHours: 24,
 };
 
 class StateStore {

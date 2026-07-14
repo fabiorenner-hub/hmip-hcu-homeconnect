@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.0] - 2026-07-14
+
+### Added
+- **Over-the-air (OTA) updates** with two channels — `stable` and `experimental`:
+  - A `dist/bootstrap/loader.js` bootstrap (node-builtins only, image-baked, never OTA-updatable) picks between the baked-in image bundle and an installed OTA payload under `/data/ota/active`. Includes crash-loop protection (max 3 boots → quarantine + rollback to image), `requires-core` and `core-supersedes` handling, and a `mainSha256` integrity check.
+  - The app is bundled into a single self-contained `dist/plugin/index.js` (esbuild), so an OTA payload (just `main.js`) runs without `node_modules`. Verified self-contained.
+  - `OtaManager` checks GitHub releases (`stable` = latest release, `experimental` = latest prerelease with a rolling `experimental` tag), validates the manifest, verifies sha256 (+ optional Ed25519), stages and atomically activates. Manual or auto mode; configurable check interval.
+  - New config options under *Advanced*: update channel, update mode, update check interval.
+- REST/actions exposed via the debug dashboard: `otaStatus`, `otaCheck`, `otaInstall`.
+- Global `unhandledRejection` / `uncaughtException` handlers so an async error never aborts the HCU installation.
+- Build tooling: `npm run build` (esbuild bundle), `npm run build:ota` / `build:ota:exp` (OTA payload + manifest), `npm run publish:ota:exp` (rolling experimental prerelease). New `tests/ota.js` suite (semver, github, manifest, installer, loader decision branches, manager).
+
+### Changed
+- Dockerfile is now multi-stage; the container `CMD` is the bootstrap loader (`node dist/bootstrap/loader.js`) instead of a direct `node src/index.js` entrypoint. Runtime image ships only the self-contained `dist/` (no `node_modules`).
+- pluginId stays `de.kiro.plugin.homeconnect` (unchanged, to keep existing installs intact).
+
 ## [0.6.6] - 2026-05-19
 
 ### Fixed

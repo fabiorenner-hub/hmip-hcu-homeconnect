@@ -22,7 +22,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host ">> Building ${Image}:${Tag} for $Platform"
-docker buildx build --platform $Platform --tag "${Image}:${Tag}" --load .
+docker buildx build --platform $Platform --build-arg "HOMECONNECT_VERSION=$Tag" --tag "${Image}:${Tag}" --load .
 if ($LASTEXITCODE -ne 0) { throw 'docker buildx build failed' }
 
 Write-Host ">> Saving image to $OutTar"

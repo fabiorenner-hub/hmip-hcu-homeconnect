@@ -130,6 +130,35 @@ unter `http://<HCU-IP>:8123/` ein kleines Web-UI mit sieben Tabs:
 
 Nicht außerhalb des Heimnetzes erreichbar machen — keine Auth.
 
+## Updates (Over-the-Air)
+
+Unter *Erweitert* wählst du **Update-Kanal** und **Modus**:
+
+- **stable** (Standard) — geprüfte GitHub-Releases.
+- **experimental** — rollierende Vorabversionen, die über-the-air ohne neues
+  `.tar.gz`/HCUweb-Upload ausgeliefert werden. Für Tester.
+- **Modus** `manual` (Standard) prüft im Hintergrund und installiert auf
+  Knopfdruck; `auto` installiert neue Versionen im gewählten Kanal automatisch.
+
+Das Plugin startet über einen kleinen Bootstrap-Loader, der entweder das
+eingebackene Image oder ein installiertes OTA-Payload fährt — mit
+Crash-Loop-Schutz: startet ein OTA-Payload dreimal nicht, wird es in Quarantäne
+gestellt und das Plugin fällt automatisch aufs Image zurück. Ein neueres
+Core-Image gewinnt immer gegen ein älteres OTA-Payload. Große Upgrades, die
+einen neueren Core brauchen, kommen weiterhin als `.tar.gz` über HCUweb.
+
+## Datenschutz & anonyme Statistik
+
+Das Plugin ist local-first und sendet standardmäßig **nichts**. Optional kannst
+du unter *Erweitert* eine **anonyme Nutzungsstatistik** aktivieren und sie an
+deinen eigenen HTTPS-Endpoint schicken. Wenn aktiv, werden nur aggregierte,
+nicht identifizierende Zähler gesendet (Anzahl Geräte, Plugin-Version, Kanal,
+Sprache, Laufzeit) plus eine zufällige anonyme Install-ID — **keine** Namen,
+Tokens, Orte oder Geräte-IDs. Der genaue Payload ist über die
+`analyticsPreview`-Aktion im Debug-Dashboard einsehbar, also keine
+Überraschungen. Bleibt der Endpoint leer (oder der Schalter aus), wird nie etwas
+gesendet.
+
 ## Fehlerbehebung
 
 | Symptom | Wahrscheinliche Ursache | Lösung |

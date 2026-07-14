@@ -128,6 +128,33 @@ web UI at `http://<HCU-IP>:8123/` with seven tabs:
 
 Don't expose this dashboard outside your trusted network — it does no auth.
 
+## Updates (over-the-air)
+
+Under *Advanced* you can pick an **update channel** and **mode**:
+
+- **stable** (default) — vetted GitHub releases.
+- **experimental** — rolling prereleases, delivered over-the-air without a new
+  `.tar.gz`/HCUweb upload. For testers.
+- **mode** `manual` (default) checks in the background and lets you install on
+  demand; `auto` installs new versions on the selected channel automatically.
+
+The plugin boots through a small bootstrap loader that runs either the baked-in
+image or an installed OTA payload, with crash-loop protection: if an OTA payload
+fails to start three times it is quarantined and the plugin rolls back to the
+image automatically. A stable core image always wins over an older OTA payload.
+Major upgrades that need a newer core still ship as a `.tar.gz` via HCUweb.
+
+## Privacy & anonymous analytics
+
+The plugin is local-first and sends **nothing** by default. You can optionally
+enable **anonymous usage statistics** under *Advanced* and point them at your
+own HTTPS endpoint. When enabled it sends only aggregated, non-identifying
+counters (number of appliances/devices, plugin version, channel, locale,
+uptime) plus a random anonymous install id — **no** names, tokens, locations or
+device ids. The exact payload is viewable via the `analyticsPreview` action on
+the debug dashboard, so there are no surprises. Leave the endpoint empty (or the
+toggle off) and nothing is ever sent.
+
 ## Troubleshooting
 
 | Symptom | Likely cause | Fix |

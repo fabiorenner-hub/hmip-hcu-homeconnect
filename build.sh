@@ -26,7 +26,7 @@ else
 fi
 
 echo ">> Building ${IMAGE}:${TAG} for ${PLATFORM}"
-docker buildx build --platform "${PLATFORM}" --tag "${IMAGE}:${TAG}" --load .
+docker buildx build --platform "${PLATFORM}" --build-arg "HOMECONNECT_VERSION=${TAG}" --tag "${IMAGE}:${TAG}" --load .
 
 echo ">> Saving image to ${OUT}"
 docker save "${IMAGE}:${TAG}" -o "${OUT}"

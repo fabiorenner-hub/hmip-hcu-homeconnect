@@ -12,6 +12,12 @@ const { buildConfigTemplate, applyConfigUpdate } = require('./config');
 const { buildDevices, controlRequestToAction, applianceUpdateToFeatures, APPLIANCES_WITH_PROGRAMS, APPLIANCES_WITH_ENERGY, typicalPowerForType } = require('./mapping');
 const { DebugDashboard } = require('./dashboard');
 const { SetupServer } = require('./setupServer');
+const { OtaManager } = require('./ota/manager');
+const { CallHome } = require('./analytics/callHome');
+const { ENV_PREFIX } = require('./pluginMeta');
+
+// Core (image) version. Kept in sync with package.json by the release process.
+const CORE_VERSION = process.env[`${ENV_PREFIX}_VERSION`] || require('../package.json').version;
 
 class Plugin {
 	constructor({ pluginId, host, tokenFile }) {
@@ -72,6 +78,33 @@ class Plugin {
 		this.dashboard = new DebugDashboard({ logger: this.logger, plugin: this });
 		this.setup = new SetupServer({ logger: this.logger, plugin: this });
 
+		this.coreVersion = CORE_VERSION;
+
+		// OTA updater (stable / experimental channels).
+		this.ota = new OtaManager({
+			dataDir: process.env.PLUGIN_STATE_DIR || './data',
+			coreVersion: CORE_VERSION,
+			getConfig: () => ({
+				mode: this.state.config.updateMode,
+				channel: this.state.config.updateChannel,
+				checkIntervalHours: this.state.config.updateCheckIntervalHours,
+			}),
+			logger: (lvl, msg) => this.logger[lvl === 'warn' ? 'warn' : 'info'](msg),
+			requestRestart: () => this._requestRestart(),
+		});
+
+		// Opt-in anonymous analytics (default off).
+		this.analytics = new CallHome({
+			dataDir: process.env.PLUGIN_STATE_DIR || './data',
+			getConfig: () => ({
+				enabled: this.state.config.analyticsEnabled,
+				endpoint: this.state.config.analyticsEndpoint || undefined,
+				intervalHours: this.state.config.analyticsIntervalHours,
+			}),
+			buildPayload: () => this._buildAnalyticsPayload(),
+			logger: (lvl, msg) => this.logger[lvl === 'warn' ? 'warn' : 'info'](msg),
+		});
+
 		// HCU device cache: deviceId -> hcuDevice
 		this.hcuDevices = new Map();
 		// Per-haId snapshot of latest settings/status as raw key/value maps
@@ -98,7 +131,50 @@ class Plugin {
 		// Try authenticating in the background; HCU connection may already be up.
 		this._initHomeConnect().catch(e => this.logger.error('HC initialization failed:', e.message));
 
+		// Background services: OTA update checks + opt-in analytics.
+		this.ota.start();
+		this.analytics.start();
+
 		this._installSignalHandlers();
+
+		// Tell the bootstrap loader we booted successfully (resets the
+		// crash-loop counter / records lastGoodAt). No-op outside the loader.
+		const markHealthy = globalThis.__otaMarkHealthy;
+		if (typeof markHealthy === 'function') {
+			try { markHealthy(); } catch { /* ignore */ }
+		}
+		this.logger.info(`Plugin ready (core ${this.coreVersion}${this.ota.otaActive() ? `, OTA ${this.ota.otaVersion()}` : ''})`);
+	}
+
+	_requestRestart() {
+		this.logger.warn('OTA install complete — restarting to apply the new payload');
+		setTimeout(() => process.exit(0), 500).unref();
+	}
+
+	/**
+	 * Aggregated, non-identifying analytics payload. NO PII, no tokens, no
+	 * device names, no coordinates — only coarse counts and versions.
+	 */
+	_buildAnalyticsPayload() {
+		const appliances = this.state.data.discoveredAppliances || {};
+		const types = {};
+		for (const info of Object.values(appliances)) {
+			const type = info && typeof info.type === 'string' ? info.type : 'unknown';
+			types[type] = (types[type] || 0) + 1;
+		}
+		return {
+			version: this.coreVersion,
+			coreVersion: this.coreVersion,
+			channel: this.state.config.updateChannel,
+			otaActive: this.ota.otaActive(),
+			locale: this.state.config.language || 'de-DE',
+			uptimeH: Math.round((Date.now() - this.startedAt) / 3_600_000 * 10) / 10,
+			counts: {
+				appliances: Object.keys(appliances).length,
+				devices: this.hcuDevices.size,
+				...types,
+			},
+		};
 	}
 
 	/**
@@ -140,6 +216,8 @@ class Plugin {
 			this.hcu.stop();
 			this.dashboard.stop();
 			this.setup.stop();
+			this.ota.stop();
+			this.analytics.stop();
 			if (this.refreshTimer) clearTimeout(this.refreshTimer);
 			if (this.pollTimer) clearInterval(this.pollTimer);
 			if (this.energyTimer) clearInterval(this.energyTimer);
@@ -433,6 +511,16 @@ class Plugin {
 			this._startEnergyTracker();
 		}
 
+		if (changed.includes('updateMode') || changed.includes('updateChannel') || changed.includes('updateCheckIntervalHours')) {
+			this.ota.stop();
+			this.ota.start();
+		}
+
+		if (changed.includes('analyticsEnabled') || changed.includes('analyticsEndpoint') || changed.includes('analyticsIntervalHours')) {
+			this.analytics.stop();
+			this.analytics.start();
+		}
+
 		const needsLogin = config.clientId !== oldClientId || config.resetSession;
 		if (needsLogin) {
 			// Kick off the device flow, then briefly wait for the verification
@@ -468,21 +556,6 @@ class Plugin {
 			en: 'Configuration applied.',
 			de: 'Konfiguration Ã¼bernommen.',
 		}, languageCode);
-	}
-
-	/**
-	 * Wait up to `timeoutMs` for either `state.lastVerificationUrl` or a
-	 * non-pending lastVerificationStatus. Returns the URL or null on timeout.
-	 */
-	async _waitForVerificationUrl(timeoutMs) {
-		const start = Date.now();
-		while (Date.now() - start < timeoutMs) {
-			if (this.state.session?.access_token) return null; // already logged in
-			if (this.state.lastVerificationUrl) return this.state.lastVerificationUrl;
-			if (this.state.lastVerificationStatus?.state === 'error') return null;
-			await new Promise(r => setTimeout(r, 200));
-		}
-		return null;
 	}
 
 	/**
@@ -693,11 +766,27 @@ class Plugin {
 			rateLimit: this.api.getStats(),
 			energyHistory: this.energyHistory,
 			energyCounters: this.state.data.energyCounters,
+			coreVersion: this.coreVersion,
+			ota: this.ota.getStatus(),
 		};
 	}
 
 	async runAction(action, args = {}) {
 		switch (action) {
+			case 'otaStatus': {
+				return { ok: true, status: this.ota.getStatus() };
+			}
+			case 'otaCheck': {
+				const status = await this.ota.check();
+				return { ok: true, status };
+			}
+			case 'otaInstall': {
+				const res = await this.ota.install();
+				return { ...res, status: this.ota.getStatus() };
+			}
+			case 'analyticsPreview': {
+				return { ok: true, payload: await this.analytics.preview() };
+			}
 			case 'refreshToken': {
 				await this.auth.refresh();
 				return { ok: true };
@@ -790,15 +879,37 @@ function round3(n) {
 	return Math.round(n * 1000) / 1000;
 }
 
-if (require.main === module) {
+/**
+ * Entry point called by the bootstrap loader (dist/bootstrap/loader.js).
+ * Boots the plugin and — on success — pings the loader's __otaMarkHealthy
+ * hook (done inside Plugin.start()).
+ */
+async function main() {
 	const { pluginId, host, tokenFile } = parseArgs();
 	const plugin = new Plugin({ pluginId, host, tokenFile });
-	plugin.start().catch(e => {
+	await plugin.start();
+	return plugin;
+}
+
+// Global robustness (Steering): never let an unhandled async error crash the
+// process during setup — that would abort the HCU installation.
+process.on('unhandledRejection', reason => {
+	// eslint-disable-next-line no-console
+	console.error('[unhandledRejection]', reason && reason.stack ? reason.stack : reason);
+});
+process.on('uncaughtException', err => {
+	// eslint-disable-next-line no-console
+	console.error('[uncaughtException]', err && err.stack ? err.stack : err);
+});
+
+// Allow running directly (dev / legacy) as well as via the loader.
+if (require.main === module) {
+	main().catch(e => {
 		// eslint-disable-next-line no-console
 		console.error('Fatal error during start:', e);
 		process.exit(1);
 	});
 }
 
-module.exports = { Plugin };
+module.exports = { Plugin, main };
 

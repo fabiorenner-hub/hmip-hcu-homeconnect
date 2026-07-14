@@ -8,7 +8,8 @@ _refs/
 .kiro/
 data/
 plugin-state.json
-dist/*.tar.gz
+dist/
+coverage/
 
 # Locally built tar.gz at repo root
 hmip-hcu-homeconnect-*.tar.gz
