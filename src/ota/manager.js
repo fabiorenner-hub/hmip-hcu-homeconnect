@@ -168,6 +168,7 @@ class OtaManager {
 			activeVersion: state.activeVersion,
 			channel: this.getChannel(),
 			mode: this.getMode(),
+			checkIntervalHours: this.deps.getConfig ? this.deps.getConfig().checkIntervalHours : null,
 			latestVersion: latestManifest ? latestManifest.version : null,
 			latestNotes: latestManifest ? (latestManifest.notes || null) : null,
 			latestUrl: this.latest ? this.latest.htmlUrl : null,

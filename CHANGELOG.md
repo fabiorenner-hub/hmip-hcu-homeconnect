@@ -2,14 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.5] - 2026-07-14
+
+### Added
+- The **Updates tab** in the debug dashboard now lets you change the update
+  **channel** (stable / experimental), **mode** (manual / auto) and **check
+  interval** directly — the values were previously read-only there.
+
+### Changed
+- The update channel is **no longer reset automatically** on an update; your
+  chosen channel and mode are kept as-is.
+
 ## [0.7.4] - 2026-07-14
 
 ### Changed
 - The top-left name is now **HmIP HomeConnect** (debug dashboard and setup wizard).
-- Update **channel** (stable / experimental) and **mode** (manual / auto) stay
-  selectable under *Advanced*. After any update the plugin returns to the safe
-  defaults — channel `stable`, mode `auto` — so testers roll back onto the
-  vetted channel automatically.
+- Update **channel** (stable / experimental) and **mode** (manual / auto) are
+  selectable under *Advanced*.
 
 ### Added
 - Stable release now also ships an **over-the-air (OTA) payload**, so HCUs on an

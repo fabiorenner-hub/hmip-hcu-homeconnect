@@ -333,6 +333,25 @@ function renderIndex() {
 				<div class="ota-statusline" id="otaStatusText"></div>
 			</div>
 
+			<div class="ota-settings">
+				<label>Kanal
+					<select id="otaChannel">
+						<option value="stable">stable</option>
+						<option value="experimental">experimental</option>
+					</select>
+				</label>
+				<label>Modus
+					<select id="otaMode">
+						<option value="auto">auto</option>
+						<option value="manual">manual</option>
+					</select>
+				</label>
+				<label>Prüfintervall (Std.)
+					<input id="otaInterval" type="number" min="1" max="168" step="1">
+				</label>
+				<span id="otaSaveHint" class="muted"></span>
+			</div>
+
 			<div class="actions" id="otaActions">
 				<button id="otaCheckBtn">Jetzt prüfen</button>
 				<button id="otaInstallBtn" class="primary" hidden>Jetzt aktualisieren</button>
@@ -457,6 +476,9 @@ button.primary:hover { background:#4c9dff; border-color:#4c9dff; }
 button.primary:disabled, button:disabled { opacity:.55; cursor:not-allowed; }
 .ota-head { display:flex; gap:24px; flex-wrap:wrap; margin-bottom:12px; }
 .ota-version { display:flex; flex-direction:column; gap:2px; }
+.ota-settings { display:flex; gap:16px; flex-wrap:wrap; align-items:center; margin:12px 0; }
+.ota-settings label { display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted); }
+.ota-settings select { min-width:150px; }
 .ota-version__label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
 .ota-version__value { font-size:20px; font-weight:650; font-variant-numeric:tabular-nums; }
 .ota-version__value.new { color:var(--accent); }
@@ -853,6 +875,13 @@ const JS_SCRIPT = String.raw`
 				'<b>Letzte Prüfung</b><span>' + (ota.lastCheckAt ? new Date(ota.lastCheckAt).toLocaleString('de-DE') : '–') + '</span>' +
 				(ota.lastError ? '<b>Letzter Fehler</b><span style="color:var(--err)">' + escape(ota.lastError) + '</span>' : '');
 		}
+		// Reflect current channel/mode in the selectors (don't clobber an open dropdown).
+		const chanSel = $('#otaChannel');
+		if (chanSel && document.activeElement !== chanSel && ota.channel) chanSel.value = ota.channel;
+		const modeSel = $('#otaMode');
+		if (modeSel && document.activeElement !== modeSel && ota.mode) modeSel.value = ota.mode;
+		const intEl = $('#otaInterval');
+		if (intEl && document.activeElement !== intEl && ota.checkIntervalHours) intEl.value = ota.checkIntervalHours;
 		if (otaBusy) return; // don't fight the install stepper
 		const installBtn = $('#otaInstallBtn');
 		const hint = $('#otaHint');
@@ -970,6 +999,33 @@ const JS_SCRIPT = String.raw`
 	});
 	const otaInstallBtn = $('#otaInstallBtn');
 	if (otaInstallBtn) otaInstallBtn.addEventListener('click', installOta);
+
+	// ===== OTA channel / mode selectors =====
+	async function saveUpdateConfig(args) {
+		const saveHint = $('#otaSaveHint');
+		if (saveHint) saveHint.textContent = 'Speichere…';
+		try {
+			const res = await invokeAction('setUpdateConfig', args);
+			if (res && res.ok === false) {
+				if (saveHint) saveHint.textContent = 'Fehler: ' + (res.error || 'unbekannt');
+				return;
+			}
+			if (res && res.status && snapshot) { snapshot.ota = res.status; renderOta(); }
+			if (saveHint) saveHint.textContent = 'Gespeichert.';
+			setTimeout(() => { if (saveHint) saveHint.textContent = ''; }, 2000);
+		} catch (e) {
+			if (saveHint) saveHint.textContent = 'Fehler: ' + e.message;
+		}
+	}
+	const otaChannel = $('#otaChannel');
+	if (otaChannel) otaChannel.addEventListener('change', () => saveUpdateConfig({ channel: otaChannel.value }));
+	const otaMode = $('#otaMode');
+	if (otaMode) otaMode.addEventListener('change', () => saveUpdateConfig({ mode: otaMode.value }));
+	const otaInterval = $('#otaInterval');
+	if (otaInterval) otaInterval.addEventListener('change', () => {
+		const h = parseInt(otaInterval.value, 10);
+		if (Number.isFinite(h) && h >= 1 && h <= 168) saveUpdateConfig({ checkIntervalHours: h });
+	});
 
 	// ===== Manual API form =====
 	$('#rawform').addEventListener('submit', async ev => {
